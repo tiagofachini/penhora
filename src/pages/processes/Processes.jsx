@@ -1,0 +1,155 @@
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardHeader, CardContent } from '@/components/ui/card';
+import { useToast } from '@/components/ui/use-toast';
+import { supabase } from '@/lib/customSupabaseClient';
+import { useAuth } from '@/contexts/SupabaseAuthContext';
+import { 
+  Plus, Search, FileText, MapPin, 
+  ArrowRight
+} from 'lucide-react';
+import { formatAddress } from '@/lib/address';
+
+const Processes = () => {
+    const { user } = useAuth();
+    const navigate = useNavigate();
+    const { toast } = useToast();
+    const [processes, setProcesses] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [searchTerm, setSearchTerm] = useState('');
+
+    useEffect(() => {
+        fetchProcesses();
+    }, [user]);
+
+    const fetchProcesses = async () => {
+        try {
+            setLoading(true);
+            const { data, error } = await supabase
+                .from('processes')
+                .select('*')
+                .eq('user_id', user.id)
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+            setProcesses(data || []);
+        } catch (error) {
+            console.error('Error fetching processes:', error);
+            toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível carregar as penhoras.' });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const filteredProcesses = processes.filter(proc => {
+        const term = searchTerm.toLowerCase();
+        return (
+            (proc.process_number && proc.process_number.toLowerCase().includes(term)) ||
+            (proc.parties_info?.exequente && proc.parties_info.exequente.toLowerCase().includes(term)) ||
+            (proc.parties_info?.executado && proc.parties_info.executado.toLowerCase().includes(term))
+        );
+    });
+
+    return (
+        <div className="space-y-6">
+            <Helmet><title>Penhoras - Penhora.app</title></Helmet>
+            
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                    <h1 className="text-3xl font-bold text-slate-800 tracking-tight">Minhas Penhoras</h1>
+                    <p className="text-slate-500">Gerencie todos os seus processos de execução.</p>
+                </div>
+                <Button onClick={() => navigate('/processes/new')} className="bg-blue-600 hover:bg-blue-700">
+                    <Plus className="mr-2 h-4 w-4" />
+                    Nova Penhora
+                </Button>
+            </div>
+
+            <div className="flex gap-2">
+                <div className="relative flex-1">
+                    <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                    <Input 
+                        placeholder="Buscar por número do processo, exequente ou executado..." 
+                        className="pl-9 bg-white"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                </div>
+            </div>
+
+            {loading ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                     {[1,2,3].map(i => <div key={i} className="h-48 bg-slate-100 animate-pulse rounded-xl" />)}
+                </div>
+            ) : filteredProcesses.length === 0 ? (
+                 <div className="text-center py-20 bg-slate-50 rounded-xl border-2 border-dashed border-slate-200">
+                    <div className="mx-auto h-12 w-12 text-slate-300 mb-4">
+                        <FileText className="h-full w-full" />
+                    </div>
+                    <h3 className="text-lg font-medium text-slate-900">Nenhuma penhora encontrada</h3>
+                    <p className="text-slate-500 mt-1 mb-6 max-w-sm mx-auto">
+                        {searchTerm ? "Tente ajustar os termos da sua busca." : "Comece criando seu primeiro auto de penhora digital."}
+                    </p>
+                    {!searchTerm && (
+                        <Button onClick={() => navigate('/processes/new')} variant="outline">
+                            <Plus className="mr-2 h-4 w-4" /> Criar Penhora
+                        </Button>
+                    )}
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                    {filteredProcesses.map(proc => (
+                        <Card key={proc.id} className="hover:shadow-md transition-shadow cursor-pointer group border-slate-200" onClick={() => navigate(`/processes/${proc.id}`)}>
+                            <CardHeader className="pb-3 bg-slate-50/50 border-b border-slate-100">
+                                <div className="flex justify-between items-start">
+                                    <div className="bg-blue-100 text-blue-700 p-2 rounded-lg">
+                                        <FileText className="h-5 w-5" />
+                                    </div>
+                                    <span className="text-xs font-mono text-slate-400 bg-white px-2 py-1 rounded border">
+                                        {new Date(proc.created_at).toLocaleDateString()}
+                                    </span>
+                                </div>
+                                <h3 className="font-bold text-lg text-slate-900 mt-3 group-hover:text-blue-700 transition-colors">
+                                    {proc.process_number || "Sem Número"}
+                                </h3>
+                            </CardHeader>
+                            <CardContent className="pt-4 space-y-4">
+                                <div className="space-y-2 text-sm">
+                                    <div className="flex justify-between">
+                                        <span className="text-slate-500">Exequente:</span>
+                                        <span className="font-medium text-slate-700 truncate max-w-[150px]">{proc.parties_info?.exequente || "-"}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-slate-500">Executado:</span>
+                                        <span className="font-medium text-slate-700 truncate max-w-[150px]">{proc.parties_info?.executado || "-"}</span>
+                                    </div>
+                                </div>
+                                
+                                {proc.execution_location && (
+                                    <div className="flex items-start gap-2 text-xs text-slate-500 bg-slate-50 p-2 rounded">
+                                        <MapPin className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                                        <span className="line-clamp-2">{formatAddress(proc.execution_location)}</span>
+                                    </div>
+                                )}
+
+                                <div className="pt-2 flex items-center justify-between border-t border-slate-100 mt-2">
+                                    <span className="text-xs font-medium text-slate-500">
+                                        {proc.item_count || 0} itens vinculados
+                                    </span>
+                                    <div className="text-blue-600 flex items-center text-sm font-medium group-hover:translate-x-1 transition-transform">
+                                        Abrir <ArrowRight className="ml-1 h-3 w-3" />
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
+
+export default Processes;
