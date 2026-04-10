@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,10 +7,30 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { Helmet } from 'react-helmet-async';
-import { Loader2, Check, AlertCircle } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Loader2, Copy, Check, Mail, MessageCircle, KeyRound, Info } from 'lucide-react';
 
 const logoSrc = "https://horizons-cdn.hostinger.com/d89750d7-1f5d-466f-8dd9-087252acee70/2d8010627a52ee48131ebed25f5ffc09.png";
+
+const generatePassword = () => {
+  const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+  const lower = 'abcdefghjkmnpqrstuvwxyz';
+  const digits = '23456789';
+  const symbols = '!@#$%&*';
+  const all = upper + lower + digits + symbols;
+
+  let password = [
+    upper[Math.floor(Math.random() * upper.length)],
+    lower[Math.floor(Math.random() * lower.length)],
+    digits[Math.floor(Math.random() * digits.length)],
+    symbols[Math.floor(Math.random() * symbols.length)],
+  ];
+
+  for (let i = 4; i < 12; i++) {
+    password.push(all[Math.floor(Math.random() * all.length)]);
+  }
+
+  return password.sort(() => Math.random() - 0.5).join('');
+};
 
 const Signup = () => {
   const { signUp, signInWithGoogle } = useAuth();
@@ -18,94 +38,31 @@ const Signup = () => {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [successData, setSuccessData] = useState(null); // { email, phone, password }
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     phone: '',
-    password: '',
-    confirmPassword: ''
-  });
-  
-  const [passwordStrength, setPasswordStrength] = useState({
-    score: 0,
-    hasMinLength: false,
-    hasNumber: false,
-    hasSpecial: false,
-    hasMixedCase: false
   });
 
   const translateAuthError = (errorMessage) => {
     const msg = errorMessage?.toLowerCase() || "";
     if (msg.includes("user already registered")) return "Este email já está cadastrado.";
-    if (msg.includes("password should be at least")) return "A senha deve ter pelo menos 6 caracteres.";
-    if (msg.includes("weak password")) return "A senha é muito fraca. Tente adicionar números e símbolos.";
     if (msg.includes("invalid email")) return "Email inválido.";
     if (msg.includes("rate limit")) return "Muitas tentativas. Aguarde um momento.";
     return "Ocorreu um erro ao criar a conta. Tente novamente.";
   };
 
-  const calculateStrength = (password) => {
-    const hasMinLength = password.length >= 8;
-    const hasNumber = /\d/.test(password);
-    const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(password);
-    const hasMixedCase = /[a-z]/.test(password) && /[A-Z]/.test(password);
-
-    let score = 0;
-    if (hasMinLength) score++;
-    if (hasNumber) score++;
-    if (hasSpecial) score++;
-    if (hasMixedCase) score++;
-
-    // Boost score for extra length if other criteria are met
-    if (password.length >= 12 && score >= 2) score++;
-
-    // Cap score at 4 for simple mapping
-    if (score > 4) score = 4;
-
-    return {
-      score,
-      hasMinLength,
-      hasNumber,
-      hasSpecial,
-      hasMixedCase
-    };
-  };
-
-  useEffect(() => {
-    setPasswordStrength(calculateStrength(formData.password));
-  }, [formData.password]);
-
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.id]: e.target.value });
   };
-
-  const getStrengthLabel = (score) => {
-    if (!formData.password) return { text: "", color: "bg-slate-200" };
-    if (formData.password.length < 6) return { text: "Muito Curta", color: "bg-red-500" };
-    
-    switch (score) {
-      case 0:
-      case 1:
-        return { text: "Fraca", color: "bg-red-500" };
-      case 2:
-        return { text: "Média", color: "bg-yellow-500" };
-      case 3:
-        return { text: "Forte", color: "bg-green-500" };
-      case 4:
-        return { text: "Muito Forte", color: "bg-emerald-600" };
-      default:
-        return { text: "", color: "bg-slate-200" };
-    }
-  };
-
-  const strengthInfo = getStrengthLabel(passwordStrength.score);
 
   const handleGoogleSignup = async () => {
     setIsGoogleLoading(true);
     try {
       const { error } = await signInWithGoogle();
       if (error) throw error;
-      // Redirect happens automatically
     } catch (error) {
       toast({
         variant: "destructive",
@@ -116,50 +73,47 @@ const Signup = () => {
     }
   };
 
+  const handleCopy = async () => {
+    if (!successData) return;
+    await navigator.clipboard.writeText(successData.password);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleWhatsApp = () => {
+    if (!successData) return;
+    const text = encodeURIComponent(
+      `Olá! Aqui está sua senha de acesso ao Penhora.app:\n\n*${successData.password}*\n\nUse este email para login: ${successData.email}\nAcesse: https://penhora.app.br/login`
+    );
+    window.open(`https://wa.me/?text=${text}`, '_blank');
+  };
+
   const onSubmit = async (e) => {
     e.preventDefault();
-    
-    if (formData.password !== formData.confirmPassword) {
-      toast({
-        variant: "destructive",
-        title: "Erro de Validação",
-        description: "As senhas digitadas não conferem."
-      });
-      return;
-    }
-
-    if (formData.password.length < 6) {
-      toast({
-        variant: "destructive",
-        title: "Senha Muito Curta",
-        description: "A senha deve ter pelo menos 6 caracteres para sua segurança."
-      });
-      return;
-    }
-
     setIsLoading(true);
+
+    const generatedPassword = generatePassword();
+
     try {
-      // Calls signUp in context which ensures emailRedirectTo is set correctly
       const { error } = await signUp({
         email: formData.email,
-        password: formData.password,
+        password: generatedPassword,
         options: {
           data: {
             name: formData.name,
-            phone: formData.phone
-          }
-        }
+            phone: formData.phone,
+          },
+        },
       });
 
       if (error) throw error;
 
-      toast({
-        title: "Conta criada com sucesso!",
-        description: "Verifique seu email para confirmar o cadastro e ativar sua conta.",
-        duration: 6000,
+      setSuccessData({
+        email: formData.email,
+        phone: formData.phone,
+        password: generatedPassword,
       });
-      navigate('/login');
-      
+
     } catch (error) {
       toast({
         variant: "destructive",
@@ -171,12 +125,86 @@ const Signup = () => {
     }
   };
 
+  // Success screen after account creation
+  if (successData) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4 py-12">
+        <Helmet>
+          <title>Conta Criada - Penhora.app</title>
+        </Helmet>
+        <Card className="w-full max-w-md shadow-lg">
+          <CardHeader className="space-y-1">
+            <Link to="/" className="flex justify-center mb-4">
+              <img src={logoSrc} alt="Penhora.app Logo" className="h-10 w-auto" />
+            </Link>
+            <div className="flex justify-center mb-2">
+              <div className="bg-green-100 rounded-full p-3">
+                <Check className="h-8 w-8 text-green-600" />
+              </div>
+            </div>
+            <CardTitle className="text-2xl font-bold text-center">Conta criada!</CardTitle>
+            <CardDescription className="text-center">
+              Sua senha temporária foi gerada. Guarde-a para acessar o sistema.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Password display */}
+            <div className="bg-slate-900 rounded-lg p-4 text-center">
+              <p className="text-xs text-slate-400 mb-1 uppercase tracking-wide">Sua senha de acesso</p>
+              <p className="text-2xl font-mono font-bold text-white tracking-widest">{successData.password}</p>
+            </div>
+
+            {/* Copy button */}
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={handleCopy}
+            >
+              {copied ? (
+                <><Check className="mr-2 h-4 w-4 text-green-500" /> Copiado!</>
+              ) : (
+                <><Copy className="mr-2 h-4 w-4" /> Copiar senha</>
+              )}
+            </Button>
+
+            {/* Send via WhatsApp */}
+            {successData.phone && (
+              <Button
+                variant="outline"
+                className="w-full border-green-300 text-green-700 hover:bg-green-50"
+                onClick={handleWhatsApp}
+              >
+                <MessageCircle className="mr-2 h-4 w-4" />
+                Enviar senha via WhatsApp
+              </Button>
+            )}
+
+            {/* Email confirmation notice */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex gap-2 text-sm text-blue-800">
+              <Mail className="h-4 w-4 mt-0.5 flex-shrink-0" />
+              <p>
+                Enviamos um email de confirmação para <strong>{successData.email}</strong>. Confirme seu email antes de fazer login.
+              </p>
+            </div>
+
+            <Button
+              className="w-full bg-primary hover:bg-primary/90"
+              onClick={() => navigate('/login')}
+            >
+              Ir para o Login
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4 py-12">
       <Helmet>
         <title>Cadastro - Penhora.app</title>
       </Helmet>
-      
+
       <Card className="w-full max-w-md shadow-lg">
         <CardHeader className="space-y-1">
           <Link to="/" className="flex justify-center mb-4">
@@ -190,7 +218,7 @@ const Signup = () => {
         <CardContent>
           <div className="grid gap-4">
             <Button variant="outline" className="w-full" onClick={handleGoogleSignup} disabled={isLoading || isGoogleLoading}>
-               {isGoogleLoading ? (
+              {isGoogleLoading ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
                 <svg className="mr-2 h-4 w-4" aria-hidden="true" focusable="false" data-prefix="fab" data-icon="google" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 488 512">
@@ -199,7 +227,7 @@ const Signup = () => {
               )}
               Cadastrar com Google
             </Button>
-            
+
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
                 <span className="w-full border-t" />
@@ -211,12 +239,20 @@ const Signup = () => {
               </div>
             </div>
 
+            {/* Passwordless info banner */}
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex gap-2 text-sm text-amber-800">
+              <KeyRound className="h-4 w-4 mt-0.5 flex-shrink-0" />
+              <p>
+                Não é necessário criar uma senha. Ao finalizar o cadastro, uma senha segura será gerada e exibida na tela para você guardar.
+              </p>
+            </div>
+
             <form onSubmit={onSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Nome Completo</Label>
-                <Input 
-                  id="name" 
-                  placeholder="Seu nome" 
+                <Input
+                  id="name"
+                  placeholder="Seu nome"
                   value={formData.name}
                   onChange={handleChange}
                   required
@@ -225,10 +261,10 @@ const Signup = () => {
 
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
-                <Input 
-                  id="email" 
-                  type="email" 
-                  placeholder="seu@email.com" 
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="seu@email.com"
                   value={formData.email}
                   onChange={handleChange}
                   required
@@ -236,112 +272,26 @@ const Signup = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="phone">Telefone / WhatsApp</Label>
-                <Input 
-                  id="phone" 
-                  placeholder="(00) 00000-0000" 
+                <Label htmlFor="phone">
+                  Telefone / WhatsApp <span className="text-slate-400 text-xs">(opcional)</span>
+                </Label>
+                <Input
+                  id="phone"
+                  placeholder="(00) 00000-0000"
                   value={formData.phone}
                   onChange={handleChange}
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="password">Senha</Label>
-                <Input 
-                  id="password" 
-                  type="password" 
-                  value={formData.password}
-                  onChange={handleChange}
-                  required
-                  className={cn(
-                    formData.password && formData.password.length < 6 && "border-red-300 focus-visible:ring-red-200"
-                  )}
-                />
-                
-                {/* Password Strength Indicator */}
-                {formData.password && (
-                  <div className="space-y-2 pt-1 animate-in fade-in slide-in-from-top-1">
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="text-xs font-medium text-slate-500">Força da senha</span>
-                      <span className={cn("text-xs font-bold", strengthInfo.color.replace('bg-', 'text-'))}>
-                        {strengthInfo.text}
-                      </span>
-                    </div>
-                    <div className="flex gap-1 h-1.5 w-full">
-                       {[0, 1, 2, 3].map((level) => (
-                         <div 
-                           key={level}
-                           className={cn(
-                             "h-full flex-1 rounded-full transition-all duration-300", 
-                             passwordStrength.score > level ? strengthInfo.color : "bg-slate-100"
-                           )}
-                         />
-                       ))}
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-1 mt-2">
-                      <div className="flex items-center text-xs text-slate-500">
-                         {passwordStrength.hasMinLength ? 
-                           <Check className="h-3 w-3 mr-1 text-green-500" /> : 
-                           <div className="h-1.5 w-1.5 rounded-full bg-slate-300 mr-2 ml-1" />
-                         }
-                         Min. 8 caracteres
-                      </div>
-                      <div className="flex items-center text-xs text-slate-500">
-                         {passwordStrength.hasMixedCase ? 
-                           <Check className="h-3 w-3 mr-1 text-green-500" /> : 
-                           <div className="h-1.5 w-1.5 rounded-full bg-slate-300 mr-2 ml-1" />
-                         }
-                         Maiúsculas/Minúsculas
-                      </div>
-                      <div className="flex items-center text-xs text-slate-500">
-                         {passwordStrength.hasNumber ? 
-                           <Check className="h-3 w-3 mr-1 text-green-500" /> : 
-                           <div className="h-1.5 w-1.5 rounded-full bg-slate-300 mr-2 ml-1" />
-                         }
-                         Números
-                      </div>
-                      <div className="flex items-center text-xs text-slate-500">
-                         {passwordStrength.hasSpecial ? 
-                           <Check className="h-3 w-3 mr-1 text-green-500" /> : 
-                           <div className="h-1.5 w-1.5 rounded-full bg-slate-300 mr-2 ml-1" />
-                         }
-                         Símbolos (!@#)
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Confirmar Senha</Label>
-                <Input 
-                  id="confirmPassword" 
-                  type="password" 
-                  value={formData.confirmPassword}
-                  onChange={handleChange}
-                  required
-                  className={cn(
-                    formData.confirmPassword && formData.password !== formData.confirmPassword && "border-red-300 focus-visible:ring-red-200"
-                  )}
-                />
-                {formData.confirmPassword && formData.password !== formData.confirmPassword && (
-                   <p className="text-xs text-red-500 flex items-center">
-                      <AlertCircle className="h-3 w-3 mr-1" />
-                      As senhas não conferem
-                   </p>
-                )}
-              </div>
-
-              <Button 
-                type="submit" 
-                className="w-full bg-primary hover:bg-primary/90 mt-4" 
-                disabled={isLoading || (formData.password && formData.password.length < 6)}
+              <Button
+                type="submit"
+                className="w-full bg-primary hover:bg-primary/90 mt-2"
+                disabled={isLoading}
               >
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Cadastrando...
+                    Criando conta...
                   </>
                 ) : (
                   'Criar Conta'
