@@ -1,166 +1,222 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { supabase } from '@/lib/customSupabaseClient';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
-import { 
-  FileText, 
-  Package, 
-  Plus, 
-  ArrowRight, 
-  Clock,
+import {
+  FileText,
+  Package,
+  Plus,
+  ArrowRight,
   CalendarCheck,
   DollarSign,
-  ShieldCheck
+  ShieldCheck,
+  MapPin,
+  User,
+  ChevronLeft,
+  ChevronRight,
+  CheckCircle2,
+  Clock,
+  ExternalLink,
+  TrendingUp,
 } from 'lucide-react';
 import { formatAddress } from '@/lib/address';
 
-const StatCard = ({ title, value, icon: Icon, description, loading }) => (
-  <Card>
-    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-      <CardTitle className="text-sm font-medium text-slate-500">{title}</CardTitle>
-      {Icon && <Icon className="h-4 w-4 text-slate-400" />}
-    </CardHeader>
-    <CardContent>
-      {loading ? (
-        <div className="h-8 w-24 bg-slate-100 animate-pulse rounded" />
-      ) : (
-        <>
-          <div className="text-2xl font-bold text-slate-800">{value}</div>
-          {description && <p className="text-xs text-slate-400 mt-1">{description}</p>}
-        </>
-      )}
-    </CardContent>
-  </Card>
-);
+const formatCurrency = (value) =>
+  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0);
+
+const getDateInfo = (dateString) => {
+  if (!dateString) return { label: 'N/A', variant: 'gray' };
+  const date = new Date(dateString);
+  const today = new Date();
+  const tomorrow = new Date(today);
+  tomorrow.setDate(today.getDate() + 1);
+
+  const d = new Date(date); d.setHours(0, 0, 0, 0);
+  const t = new Date(today); t.setHours(0, 0, 0, 0);
+  const tm = new Date(tomorrow); tm.setHours(0, 0, 0, 0);
+
+  const fullDate = date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+  if (d.getTime() === t.getTime()) return { label: 'Hoje', fullDate, variant: 'red' };
+  if (d.getTime() === tm.getTime()) return { label: 'Amanhã', fullDate, variant: 'amber' };
+  const diffDays = (d.getTime() - t.getTime()) / (1000 * 60 * 60 * 24);
+  if (diffDays <= 7) return { label: fullDate, fullDate, variant: 'orange' };
+  return { label: fullDate, fullDate, variant: 'blue' };
+};
+
+const variantClasses = {
+  red: 'bg-red-100 text-red-700',
+  amber: 'bg-amber-100 text-amber-700',
+  orange: 'bg-orange-100 text-orange-700',
+  blue: 'bg-blue-100 text-blue-700',
+  gray: 'bg-slate-100 text-slate-500',
+};
+
+const StatCard = ({ title, value, icon: Icon, description, loading, color = 'blue' }) => {
+  const iconClasses = {
+    blue: 'bg-blue-50 text-blue-600',
+    green: 'bg-green-50 text-green-600',
+    amber: 'bg-amber-50 text-amber-600',
+    purple: 'bg-purple-50 text-purple-600',
+  };
+  return (
+    <Card>
+      <CardContent className="p-6">
+        {loading ? (
+          <div className="space-y-3">
+            <div className="h-4 w-28 bg-slate-100 animate-pulse rounded" />
+            <div className="h-9 w-20 bg-slate-100 animate-pulse rounded" />
+            <div className="h-3 w-36 bg-slate-100 animate-pulse rounded" />
+          </div>
+        ) : (
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-slate-500">{title}</p>
+              <p className="text-3xl font-bold text-slate-800 mt-1 truncate">{value}</p>
+              {description && <p className="text-xs text-slate-400 mt-1">{description}</p>}
+            </div>
+            <div className={`p-3 rounded-xl flex-shrink-0 ${iconClasses[color]}`}>
+              <Icon className="h-5 w-5" />
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
 
 const Dashboard = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState({
+  const [periodDate, setPeriodDate] = useState(new Date());
+  const [upcomingDiligences, setUpcomingDiligences] = useState([]);
+  const [periodStats, setPeriodStats] = useState({
     processCount: 0,
     itemCount: 0,
     diligenceCount: 0,
-    diligenceToday: 0,
-    totalValue: 0
+    totalValue: 0,
   });
-  const [recentProcesses, setRecentProcesses] = useState([]);
+
+  const prevMonth = () => setPeriodDate(d => new Date(d.getFullYear(), d.getMonth() - 1, 1));
+  const nextMonth = () => setPeriodDate(d => new Date(d.getFullYear(), d.getMonth() + 1, 1));
+
+  const isCurrentMonth =
+    periodDate.getMonth() === new Date().getMonth() &&
+    periodDate.getFullYear() === new Date().getFullYear();
+
+  const fetchData = useCallback(async () => {
+    if (!user) return;
+    setLoading(true);
+
+    try {
+      const monthStart = new Date(periodDate.getFullYear(), periodDate.getMonth(), 1);
+      const monthEnd = new Date(periodDate.getFullYear(), periodDate.getMonth() + 1, 0, 23, 59, 59);
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+
+      // 1. Upcoming scheduled diligences (today onwards, status Agendada)
+      const { data: upcoming } = await supabase
+        .from('diligences')
+        .select(`
+          id,
+          date,
+          location,
+          status,
+          process_id,
+          processes!inner(
+            id,
+            process_number,
+            parties_info,
+            execution_location,
+            user_id
+          )
+        `)
+        .eq('processes.user_id', user.id)
+        .eq('status', 'Agendada')
+        .gte('date', todayStart.toISOString())
+        .order('date', { ascending: true })
+        .limit(8);
+
+      // 2. Completed diligences in the selected period
+      const { data: completedDiligences, count: completedCount } = await supabase
+        .from('diligences')
+        .select('id, process_id, processes!inner(user_id)', { count: 'exact' })
+        .eq('processes.user_id', user.id)
+        .eq('status', 'Realizada')
+        .gte('date', monthStart.toISOString())
+        .lte('date', monthEnd.toISOString());
+
+      const completedProcessIds = [...new Set(completedDiligences?.map(d => d.process_id) || [])];
+      const completedDiligenceIds = completedDiligences?.map(d => d.id) || [];
+
+      // 3. Items from those completed diligences
+      let itemCount = 0;
+      let totalValue = 0;
+
+      if (completedDiligenceIds.length > 0) {
+        const { data: items } = await supabase
+          .from('seized_items')
+          .select('initial_valuation, quantity')
+          .in('diligence_id', completedDiligenceIds);
+
+        itemCount = items?.length || 0;
+        totalValue = items?.reduce((sum, item) => {
+          const qty = parseFloat(item.quantity) || 1;
+          const val = parseFloat(item.initial_valuation) || 0;
+          return sum + qty * val;
+        }, 0) || 0;
+      }
+
+      setUpcomingDiligences(upcoming || []);
+      setPeriodStats({
+        processCount: completedProcessIds.length,
+        itemCount,
+        diligenceCount: completedCount || 0,
+        totalValue,
+      });
+    } catch (error) {
+      console.error('Dashboard error:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao carregar dados',
+        description: 'Não foi possível atualizar o dashboard.',
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [user, periodDate, toast]);
 
   useEffect(() => {
-    let isMounted = true;
+    fetchData();
+  }, [fetchData]);
 
-    const fetchDashboardData = async () => {
-      if (!user) return;
-      
-      try {
-        setLoading(true);
-        
-        // 1. Process Count
-        const { count: processCount, error: processError } = await supabase
-          .from('processes')
-          .select('*', { count: 'exact', head: true })
-          .eq('user_id', user.id);
-        
-        if (processError) throw processError;
-
-        // 2. Item Count — filtrado pelos processos do usuário
-        const { count: itemCount, error: itemError } = await supabase
-          .from('seized_items')
-          .select('id, processes!inner(user_id)', { count: 'exact', head: true })
-          .eq('processes.user_id', user.id);
-
-        if (itemError) throw itemError;
-
-        // 3. Diligences (Total & Today) — filtrado pelos processos do usuário
-        const { count: totalDiligences } = await supabase
-          .from('diligences')
-          .select('id, processes!inner(user_id)', { count: 'exact', head: true })
-          .eq('processes.user_id', user.id);
-
-        const today = new Date();
-        today.setHours(0,0,0,0);
-        const tomorrow = new Date(today);
-        tomorrow.setDate(tomorrow.getDate() + 1);
-
-        const { count: todayDiligences } = await supabase
-          .from('diligences')
-          .select('id, processes!inner(user_id)', { count: 'exact', head: true })
-          .eq('processes.user_id', user.id)
-          .gte('date', today.toISOString())
-          .lt('date', tomorrow.toISOString());
-
-        // 4. Total Value of Seized Items
-        const { data: itemsValueData, error: valError } = await supabase
-            .from('seized_items')
-            .select(`
-                initial_valuation, 
-                quantity,
-                processes!inner(user_id)
-            `)
-            .eq('processes.user_id', user.id);
-
-        if (valError) throw valError;
-
-        const totalCalculatedValue = itemsValueData?.reduce((sum, item) => {
-            const qty = parseFloat(item.quantity) || 1;
-            const val = parseFloat(item.initial_valuation) || 0;
-            return sum + (qty * val);
-        }, 0) || 0;
-
-        // 5. Recent Processes List
-        const { data: processesData } = await supabase
-          .from('processes')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false })
-          .range(0, 5);
-
-        if (isMounted) {
-          setStats({
-            processCount: processCount || 0,
-            itemCount: itemCount || 0,
-            diligenceCount: totalDiligences || 0,
-            diligenceToday: todayDiligences || 0,
-            totalValue: totalCalculatedValue
-          });
-          setRecentProcesses(processesData || []);
-        }
-
-      } catch (error) {
-        console.error("Dashboard Data Error:", error);
-        if (isMounted) {
-          toast({
-            variant: "destructive",
-            title: "Erro ao carregar dados",
-            description: "Não foi possível atualizar as informações do dashboard."
-          });
-        }
-      } finally {
-        if (isMounted) setLoading(false);
-      }
-    };
-
-    fetchDashboardData();
-
-    return () => { isMounted = false; };
-  }, [user, toast]);
-
-  const formatDate = (dateString) => {
-    if (!dateString) return 'N/A';
-    return new Date(dateString).toLocaleDateString('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    });
+  const getLocation = (diligence) => {
+    const loc = diligence.location || diligence.processes?.execution_location;
+    if (!loc) return null;
+    return formatAddress(loc);
   };
 
-  const formatCurrency = (value) => {
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+  const getExecutado = (diligence) => {
+    const info = diligence.processes?.parties_info;
+    if (!info) return null;
+    try {
+      const parsed = typeof info === 'string' ? JSON.parse(info) : info;
+      return parsed?.executado || null;
+    } catch {
+      return null;
+    }
   };
+
+  const openMaps = (address) => {
+    window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`, '_blank');
+  };
+
+  const periodLabel = periodDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
 
   return (
     <>
@@ -169,18 +225,20 @@ const Dashboard = () => {
         <meta name="robots" content="noindex" />
       </Helmet>
 
-      <div className="space-y-8 pb-10">
+      <div className="space-y-10 pb-10">
+
+        {/* Header */}
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold text-slate-800">
               Olá, {user?.user_metadata?.name?.split(' ')[0] || 'Visitante'}!
             </h1>
             <p className="text-slate-500 mt-1">
-              Aqui está o resumo da sua atividade recente.
+              Aqui está o resumo das suas atividades.
             </p>
           </div>
           <div className="flex items-center gap-3">
-             <Button asChild variant="outline" className="shadow-sm">
+            <Button asChild variant="outline" className="shadow-sm">
               <Link to="/audit">
                 <ShieldCheck className="mr-2 h-4 w-4" />
                 Auditoria
@@ -195,120 +253,197 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Stats Grid - 4 Columns */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <StatCard 
-            title="Total de Penhoras" 
-            value={stats.processCount} 
-            icon={FileText} 
-            loading={loading}
-            description="Penhoras registradas" 
-          />
-          <StatCard 
-            title="Bens à penhorar" 
-            value={stats.itemCount} 
-            icon={Package} 
-            loading={loading}
-            description="Total de bens capturados"
-          />
-          <StatCard 
-            title="Diligências" 
-            value={`${stats.diligenceToday} / ${stats.diligenceCount}`} 
-            icon={CalendarCheck} 
-            loading={loading}
-            description="Hoje / Total acumulado"
-          />
-           <StatCard 
-            title="Valor Total Estimado" 
-            value={formatCurrency(stats.totalValue)} 
-            icon={DollarSign} 
-            loading={loading}
-            description="Somatória das avaliações"
-          />
+        {/* Section 1: Upcoming penhoras */}
+        <div>
+          <div className="flex items-center gap-2 mb-5">
+            <div className="p-1.5 bg-blue-50 rounded-lg">
+              <CalendarCheck className="h-5 w-5 text-blue-600" />
+            </div>
+            <h2 className="text-xl font-semibold text-slate-800">Próximas Penhoras</h2>
+          </div>
+
+          {loading ? (
+            <div className="grid gap-4 md:grid-cols-2">
+              {[1, 2, 3, 4].map(i => (
+                <div key={i} className="h-40 bg-slate-100 animate-pulse rounded-xl" />
+              ))}
+            </div>
+          ) : upcomingDiligences.length === 0 ? (
+            <Card className="border-dashed">
+              <CardContent className="flex flex-col items-center justify-center py-14 text-center space-y-3">
+                <div className="p-4 bg-slate-50 rounded-full">
+                  <CalendarCheck className="h-8 w-8 text-slate-300" />
+                </div>
+                <h3 className="font-semibold text-slate-700">Nenhuma penhora agendada</h3>
+                <p className="text-sm text-slate-400 max-w-xs">
+                  Você não tem diligências com status "Agendada" para os próximos dias.
+                </p>
+                <Button asChild variant="outline" size="sm" className="mt-2">
+                  <Link to="/processes/new">Agendar nova penhora</Link>
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2">
+              {upcomingDiligences.map((diligence) => {
+                const address = getLocation(diligence);
+                const executado = getExecutado(diligence);
+                const { label, fullDate, variant } = getDateInfo(diligence.date);
+
+                return (
+                  <Card key={diligence.id} className="hover:shadow-md transition-shadow">
+                    <CardContent className="p-5">
+                      <div className="flex items-start gap-4">
+                        {/* Date column */}
+                        <div className={`flex flex-col items-center justify-center rounded-xl px-3 py-2.5 flex-shrink-0 min-w-[60px] ${variantClasses[variant]}`}>
+                          {label === 'Hoje' || label === 'Amanhã' ? (
+                            <>
+                              <Clock className="h-4 w-4 mb-1" />
+                              <span className="text-xs font-bold leading-tight">{label}</span>
+                            </>
+                          ) : (
+                            <>
+                              <span className="text-xl font-bold leading-none">
+                                {new Date(diligence.date).toLocaleDateString('pt-BR', { day: '2-digit' })}
+                              </span>
+                              <span className="text-xs font-medium mt-0.5">
+                                {new Date(diligence.date).toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '')}
+                              </span>
+                            </>
+                          )}
+                        </div>
+
+                        {/* Info column */}
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-slate-900 text-sm truncate">
+                            {diligence.processes?.process_number || 'Penhora sem número'}
+                          </p>
+
+                          {executado && (
+                            <div className="flex items-center gap-1.5 mt-1.5">
+                              <User className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
+                              <p className="text-sm text-slate-600 truncate">{executado}</p>
+                            </div>
+                          )}
+
+                          {address && (
+                            <div className="flex items-start gap-1.5 mt-1.5">
+                              <MapPin className="h-3.5 w-3.5 text-slate-400 flex-shrink-0 mt-0.5" />
+                              <p className="text-sm text-slate-500 line-clamp-2 leading-snug">{address}</p>
+                            </div>
+                          )}
+
+                          {label !== 'Hoje' && label !== 'Amanhã' && (
+                            <p className="text-xs text-slate-400 mt-1.5">{fullDate}</p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex items-center gap-2 mt-4 pt-3 border-t border-slate-100">
+                        {address && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex-1 h-8 text-xs gap-1.5"
+                            onClick={() => openMaps(address)}
+                          >
+                            <MapPin className="h-3.5 w-3.5" />
+                            Ver no Mapa
+                            <ExternalLink className="h-3 w-3 opacity-40" />
+                          </Button>
+                        )}
+                        <Button
+                          asChild
+                          variant="ghost"
+                          size="sm"
+                          className="flex-1 h-8 text-xs gap-1.5"
+                        >
+                          <Link to={`/processes/${diligence.processes?.id}`}>
+                            Ver Processo
+                            <ArrowRight className="h-3.5 w-3.5" />
+                          </Link>
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
         </div>
 
-        <div className="grid gap-4 grid-cols-1">
-          {/* Main Content Area: Recent Penhoras - Now Full Width */}
-          <div className="col-span-1">
-              <Card className="h-full">
-                <CardHeader>
-                  <CardTitle>Penhoras Recentes</CardTitle> 
-                  <CardDescription>
-                    Seus últimos registros de penhora e avaliação.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {loading ? (
-                    <div className="space-y-4">
-                        {[1, 2, 3].map((i) => (
-                            <div key={i} className="flex items-center space-x-4">
-                                <div className="h-12 w-12 rounded-full bg-slate-100 animate-pulse" />
-                                <div className="space-y-2 flex-1">
-                                    <div className="h-4 w-[250px] bg-slate-100 animate-pulse rounded" />
-                                    <div className="h-4 w-[200px] bg-slate-100 animate-pulse rounded" />
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                  ) : recentProcesses.length > 0 ? (
-                    <div className="space-y-1">
-                      {recentProcesses.map((process) => (
-                        <div
-                          key={process.id}
-                          className="group flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 hover:bg-slate-50 rounded-lg transition-colors border border-transparent hover:border-slate-100"
-                        >
-                          <Link to={`/processes/${process.id}`} className="flex items-start gap-4 flex-1 w-full">
-                            <div className="mt-1 p-2 bg-blue-50 text-blue-600 rounded-lg group-hover:bg-blue-100 transition-colors">
-                              <FileText className="h-5 w-5" />
-                            </div>
-                            <div className="space-y-1">
-                              <p className="font-semibold text-slate-900 group-hover:text-blue-700 transition-colors">
-                                {process.process_number || "Penhora sem número"}
-                              </p>
-                              <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-500">
-                                <span className="flex items-center">
-                                  <Clock className="mr-1 h-3.5 w-3.5" />
-                                  {formatDate(process.created_at)}
-                                </span>
-                                {process.execution_location && (
-                                    <span>• {formatAddress(process.execution_location)}</span>
-                                )}
-                              </div>
-                            </div>
-                          </Link>
-                          
-                          <div className="mt-4 sm:mt-0 flex items-center self-end sm:self-center pl-0 sm:pl-4">
-                            <Button asChild variant="ghost" size="sm" className="text-slate-400 hover:text-blue-600">
-                                <Link to={`/processes/${process.id}`}>
-                                    <ArrowRight className="h-4 w-4" />
-                                </Link>
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center py-12 text-center space-y-4">
-                      <div className="p-4 bg-slate-50 rounded-full">
-                        <FileText className="h-8 w-8 text-slate-400" />
-                      </div>
-                      <div className="space-y-1">
-                        <h3 className="font-semibold text-slate-900">Nenhuma penhora encontrada</h3>
-                        <p className="text-sm text-slate-500 max-w-xs mx-auto">
-                          Você ainda não registrou nenhuma penhora. Comece criando a primeira agora. 
-                        </p>
-                      </div>
-                      <Button asChild variant="outline" className="mt-4">
-                        <Link to="/processes/new">
-                          Criar Penhora
-                        </Link>
-                      </Button>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+        {/* Section 2: Period Summary */}
+        <div>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 bg-green-50 rounded-lg">
+                <TrendingUp className="h-5 w-5 text-green-600" />
+              </div>
+              <h2 className="text-xl font-semibold text-slate-800">Resumo do Período</h2>
+            </div>
+
+            {/* Month navigator */}
+            <div className="flex items-center gap-1 bg-slate-100 rounded-lg p-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={prevMonth}
+                className="h-7 w-7 p-0 hover:bg-white rounded-md"
+              >
+                <ChevronLeft className="h-4 w-4 text-slate-600" />
+              </Button>
+              <span className="text-sm font-medium text-slate-700 capitalize px-3 min-w-[130px] text-center">
+                {periodLabel}
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={nextMonth}
+                disabled={isCurrentMonth}
+                className="h-7 w-7 p-0 hover:bg-white rounded-md disabled:opacity-30"
+              >
+                <ChevronRight className="h-4 w-4 text-slate-600" />
+              </Button>
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <StatCard
+              title="Penhoras Realizadas"
+              value={periodStats.processCount}
+              icon={FileText}
+              loading={loading}
+              color="blue"
+              description="Processos com diligência concluída"
+            />
+            <StatCard
+              title="Bens Localizados"
+              value={periodStats.itemCount}
+              icon={Package}
+              loading={loading}
+              color="purple"
+              description="Itens apreendidos no período"
+            />
+            <StatCard
+              title="Diligências Executadas"
+              value={periodStats.diligenceCount}
+              icon={CheckCircle2}
+              loading={loading}
+              color="green"
+              description='Status "Realizada" no período'
+            />
+            <StatCard
+              title="Valor Total dos Bens"
+              value={formatCurrency(periodStats.totalValue)}
+              icon={DollarSign}
+              loading={loading}
+              color="amber"
+              description="Somatória das avaliações"
+            />
           </div>
         </div>
+
       </div>
     </>
   );
