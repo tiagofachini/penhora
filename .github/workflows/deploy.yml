@@ -28,11 +28,11 @@ jobs:
       - name: Deploy via FTP para Hostinger
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
-          server: ftp.penhora.app.br
+          server: 45.152.44.230
           username: u147485162.penhora.app.br
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: ./dist/
           server-dir: public_html/
           dangerous-clean-slate: false
-          protocol: ftps
+          protocol: ftp
           port: 21
