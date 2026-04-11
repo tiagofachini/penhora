@@ -6,8 +6,9 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
+import { supabase } from '@/lib/customSupabaseClient';
 import { Helmet } from 'react-helmet-async';
-import { Loader2, Copy, Check, Mail, MessageCircle, KeyRound, Info } from 'lucide-react';
+import { Loader2, Check, Mail, KeyRound } from 'lucide-react';
 
 const logoSrc = "https://horizons-cdn.hostinger.com/d89750d7-1f5d-466f-8dd9-087252acee70/2d8010627a52ee48131ebed25f5ffc09.png";
 
@@ -18,7 +19,7 @@ const generatePassword = () => {
   const symbols = '!@#$%&*';
   const all = upper + lower + digits + symbols;
 
-  let password = [
+  const password = [
     upper[Math.floor(Math.random() * upper.length)],
     lower[Math.floor(Math.random() * lower.length)],
     digits[Math.floor(Math.random() * digits.length)],
@@ -38,8 +39,7 @@ const Signup = () => {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const [successData, setSuccessData] = useState(null); // { email, phone, password }
+  const [successEmail, setSuccessEmail] = useState(null);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -73,21 +73,6 @@ const Signup = () => {
     }
   };
 
-  const handleCopy = async () => {
-    if (!successData) return;
-    await navigator.clipboard.writeText(successData.password);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const handleWhatsApp = () => {
-    if (!successData) return;
-    const text = encodeURIComponent(
-      `Olá! Aqui está sua senha de acesso ao Penhora.app:\n\n*${successData.password}*\n\nUse este email para login: ${successData.email}\nAcesse: https://penhora.app.br/login`
-    );
-    window.open(`https://wa.me/?text=${text}`, '_blank');
-  };
-
   const onSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
@@ -95,7 +80,8 @@ const Signup = () => {
     const generatedPassword = generatePassword();
 
     try {
-      const { error } = await signUp({
+      // 1. Criar a conta
+      const { error: signUpError } = await signUp({
         email: formData.email,
         password: generatedPassword,
         options: {
@@ -106,13 +92,28 @@ const Signup = () => {
         },
       });
 
-      if (error) throw error;
+      if (signUpError) throw signUpError;
 
-      setSuccessData({
-        email: formData.email,
-        phone: formData.phone,
-        password: generatedPassword,
+      // 2. Enviar senha por email via Edge Function
+      const { error: emailError } = await supabase.functions.invoke('send-welcome-email', {
+        body: {
+          email: formData.email,
+          password: generatedPassword,
+          name: formData.name,
+        },
       });
+
+      if (emailError) {
+        console.error('Falha ao enviar email de boas-vindas:', emailError);
+        toast({
+          variant: "destructive",
+          title: "Atenção",
+          description: "Conta criada, mas houve um problema ao enviar o email com a senha. Entre em contato com o suporte.",
+          duration: 8000,
+        });
+      }
+
+      setSuccessEmail(formData.email);
 
     } catch (error) {
       toast({
@@ -125,8 +126,8 @@ const Signup = () => {
     }
   };
 
-  // Success screen after account creation
-  if (successData) {
+  // Tela de sucesso
+  if (successEmail) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4 py-12">
         <Helmet>
@@ -144,47 +145,19 @@ const Signup = () => {
             </div>
             <CardTitle className="text-2xl font-bold text-center">Conta criada!</CardTitle>
             <CardDescription className="text-center">
-              Sua senha temporária foi gerada. Guarde-a para acessar o sistema.
+              Sua senha de acesso foi enviada por email.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Password display */}
-            <div className="bg-slate-900 rounded-lg p-4 text-center">
-              <p className="text-xs text-slate-400 mb-1 uppercase tracking-wide">Sua senha de acesso</p>
-              <p className="text-2xl font-mono font-bold text-white tracking-widest">{successData.password}</p>
-            </div>
-
-            {/* Copy button */}
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={handleCopy}
-            >
-              {copied ? (
-                <><Check className="mr-2 h-4 w-4 text-green-500" /> Copiado!</>
-              ) : (
-                <><Copy className="mr-2 h-4 w-4" /> Copiar senha</>
-              )}
-            </Button>
-
-            {/* Send via WhatsApp */}
-            {successData.phone && (
-              <Button
-                variant="outline"
-                className="w-full border-green-300 text-green-700 hover:bg-green-50"
-                onClick={handleWhatsApp}
-              >
-                <MessageCircle className="mr-2 h-4 w-4" />
-                Enviar senha via WhatsApp
-              </Button>
-            )}
-
-            {/* Email confirmation notice */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex gap-2 text-sm text-blue-800">
-              <Mail className="h-4 w-4 mt-0.5 flex-shrink-0" />
-              <p>
-                Enviamos um email de confirmação para <strong>{successData.email}</strong>. Confirme seu email antes de fazer login.
-              </p>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex gap-3 text-sm text-blue-800">
+              <Mail className="h-5 w-5 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="font-semibold mb-1">Verifique seu email</p>
+                <p>
+                  Enviamos sua senha de acesso para <strong>{successEmail}</strong>.
+                  Verifique também a caixa de spam.
+                </p>
+              </div>
             </div>
 
             <Button
@@ -239,11 +212,11 @@ const Signup = () => {
               </div>
             </div>
 
-            {/* Passwordless info banner */}
+            {/* Aviso sobre senha automática */}
             <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex gap-2 text-sm text-amber-800">
               <KeyRound className="h-4 w-4 mt-0.5 flex-shrink-0" />
               <p>
-                Não é necessário criar uma senha. Ao finalizar o cadastro, uma senha segura será gerada e exibida na tela para você guardar.
+                Não é necessário criar uma senha. Após o cadastro, enviaremos uma senha segura para o seu email.
               </p>
             </div>
 
