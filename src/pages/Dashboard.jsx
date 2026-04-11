@@ -67,17 +67,19 @@ const Dashboard = () => {
         
         if (processError) throw processError;
 
-        // 2. Item Count
+        // 2. Item Count — filtrado pelos processos do usuário
         const { count: itemCount, error: itemError } = await supabase
           .from('seized_items')
-          .select('id', { count: 'exact', head: true });
-        
+          .select('id, processes!inner(user_id)', { count: 'exact', head: true })
+          .eq('processes.user_id', user.id);
+
         if (itemError) throw itemError;
 
-        // 3. Diligences (Total & Today)
+        // 3. Diligences (Total & Today) — filtrado pelos processos do usuário
         const { count: totalDiligences } = await supabase
           .from('diligences')
-          .select('id', { count: 'exact', head: true });
+          .select('id, processes!inner(user_id)', { count: 'exact', head: true })
+          .eq('processes.user_id', user.id);
 
         const today = new Date();
         today.setHours(0,0,0,0);
@@ -86,7 +88,8 @@ const Dashboard = () => {
 
         const { count: todayDiligences } = await supabase
           .from('diligences')
-          .select('id', { count: 'exact', head: true })
+          .select('id, processes!inner(user_id)', { count: 'exact', head: true })
+          .eq('processes.user_id', user.id)
           .gte('date', today.toISOString())
           .lt('date', tomorrow.toISOString());
 
