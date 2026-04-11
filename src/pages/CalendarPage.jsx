@@ -48,19 +48,19 @@ const CalendarPage = () => {
     if (!user) return;
     try {
       setLoading(true);
-      // Fetch diligences with process info
+      // Fetch diligences belonging to the current user's processes only
       const { data, error } = await supabase
         .from('diligences')
         .select(`
           *,
-          processes (
+          processes!inner (
             id,
             process_number,
-            parties_info
+            parties_info,
+            user_id
           )
         `)
-        // Filter by processes owned by the user (implicitly handled by RLS on processes, 
-        // but explicit join filtering ensures we only get valid ones)
+        .eq('processes.user_id', user.id)
         .order('date', { ascending: true });
 
       if (error) throw error;

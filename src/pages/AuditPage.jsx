@@ -8,9 +8,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Loader2, Search, Filter, ChevronLeft, ChevronRight, ShieldCheck, Download, RefreshCw } from 'lucide-react';
+import { Search, Filter, ChevronLeft, ChevronRight, ShieldCheck, RefreshCw } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/components/ui/use-toast';
 
@@ -28,15 +27,9 @@ const AuditPage = () => {
     const [filters, setFilters] = useState({
         startDate: '',
         endDate: '',
-        seizureRef: '', // details->>info
+        seizureRef: '',
         action: 'all',
-        userId: 'all'
     });
-    
-    // User Autocomplete State
-    const [userSearch, setUserSearch] = useState('');
-    const [userOptions, setUserOptions] = useState([]);
-    const [selectedUser, setSelectedUser] = useState(null);
 
     // Action Options (Derived or Static)
     const actionTypes = [
@@ -46,30 +39,13 @@ const AuditPage = () => {
         "alteração de plano", "alteração da conta"
     ];
 
-    // Fetch Users for Autocomplete
-    useEffect(() => {
-        const searchUsers = async () => {
-            if (userSearch.length < 2) {
-                setUserOptions([]);
-                return;
-            }
-            const { data } = await supabase
-                .from('users')
-                .select('id, name, email')
-                .or(`name.ilike.%${userSearch}%,email.ilike.%${userSearch}%`)
-                .limit(5);
-            setUserOptions(data || []);
-        };
-        const timer = setTimeout(searchUsers, 300);
-        return () => clearTimeout(timer);
-    }, [userSearch]);
-
     const fetchLogs = useCallback(async () => {
         setLoading(true);
         try {
             let query = supabase
                 .from('activity_logs')
-                .select('*', { count: 'exact' });
+                .select('*', { count: 'exact' })
+                .eq('user_id', user.id);
 
             // Apply Filters
             if (filters.startDate) query = query.gte('created_at', new Date(filters.startDate).toISOString());
@@ -82,21 +58,9 @@ const AuditPage = () => {
                 query = query.eq('action', filters.action);
             }
             if (filters.seizureRef) {
-                // Search within JSONB details -> info
-                // Note: Arrow operator in ilike requires casting or specific syntax depending on postgrest version
-                // Simple filter:
                 query = query.ilike('details->>info', `%${filters.seizureRef}%`);
             }
-            if (selectedUser) {
-                query = query.eq('user_id', selectedUser.id);
-            }
 
-            // If not admin, restrict to own logs or owner_id logs
-            // Assuming "Auditoria" is for admins or for viewing one's own detailed history?
-            // The prompt implies a general audit page. If regular user, they only see their own.
-            // Admin check is done via RLS usually, but let's be safe.
-            // RLS "Owners can view logs for their account" is already in place.
-            
             // Pagination & Sorting
             const from = page * ITEMS_PER_PAGE;
             const to = from + ITEMS_PER_PAGE - 1;
@@ -118,7 +82,7 @@ const AuditPage = () => {
         } finally {
             setLoading(false);
         }
-    }, [filters, page, selectedUser, toast]);
+    }, [filters, page, user, toast]);
 
     useEffect(() => {
         fetchLogs();
@@ -135,10 +99,7 @@ const AuditPage = () => {
             endDate: '',
             seizureRef: '',
             action: 'all',
-            userId: 'all'
         });
-        setSelectedUser(null);
-        setUserSearch('');
         setPage(0);
     };
 
@@ -159,9 +120,9 @@ const AuditPage = () => {
                 <div>
                     <h1 className="text-3xl font-bold text-slate-800 flex items-center gap-2">
                         <ShieldCheck className="h-8 w-8 text-blue-600" />
-                        Auditoria do Sistema
+                        Minha Auditoria
                     </h1>
-                    <p className="text-slate-500">Registre e monitore todas as atividades e operações realizadas.</p>
+                    <p className="text-slate-500">Histórico de todas as atividades realizadas na sua conta.</p>
                 </div>
                 <Button variant="outline" onClick={fetchLogs} disabled={loading}>
                     <RefreshCw className={cn("mr-2 h-4 w-4", loading && "animate-spin")} />
@@ -193,42 +154,6 @@ const AuditPage = () => {
                                 value={filters.endDate} 
                                 onChange={(e) => handleFilterChange('endDate', e.target.value)} 
                             />
-                        </div>
-
-                        {/* User Autocomplete */}
-                        <div className="space-y-2">
-                            <Label>Usuário</Label>
-                            <Popover>
-                                <PopoverTrigger asChild>
-                                    <Button variant="outline" className="w-full justify-between font-normal">
-                                        {selectedUser ? selectedUser.name || selectedUser.email : "Selecionar usuário..."}
-                                        <Search className="h-4 w-4 opacity-50" />
-                                    </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="p-0 w-[250px]" align="start">
-                                    <div className="p-2">
-                                        <Input 
-                                            placeholder="Buscar nome ou email..." 
-                                            value={userSearch}
-                                            onChange={(e) => setUserSearch(e.target.value)}
-                                            className="mb-2 h-8"
-                                        />
-                                        <div className="max-h-[200px] overflow-y-auto space-y-1">
-                                            {userOptions.length === 0 && <div className="text-xs text-center py-2 text-muted-foreground">Nenhum usuário encontrado</div>}
-                                            {userOptions.map(u => (
-                                                <div 
-                                                    key={u.id}
-                                                    className="text-sm px-2 py-1.5 hover:bg-slate-100 rounded cursor-pointer"
-                                                    onClick={() => { setSelectedUser(u); handleFilterChange('userId', u.id); }}
-                                                >
-                                                    <div className="font-medium">{u.name}</div>
-                                                    <div className="text-xs text-slate-500">{u.email}</div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                </PopoverContent>
-                            </Popover>
                         </div>
 
                         {/* Action Type */}
