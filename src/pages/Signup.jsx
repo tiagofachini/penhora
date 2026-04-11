@@ -7,8 +7,17 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { supabase } from '@/lib/customSupabaseClient';
+// generatePassword moved to edge function
 import { Helmet } from 'react-helmet-async';
 import { Loader2, Check, Mail, KeyRound } from 'lucide-react';
+
+const formatPhone = (value) => {
+  const digits = value.replace(/\D/g, '').slice(0, 11);
+  if (digits.length <= 2) return digits.length ? `(${digits}` : '';
+  if (digits.length <= 6) return `(${digits.slice(0,2)}) ${digits.slice(2)}`;
+  if (digits.length <= 10) return `(${digits.slice(0,2)}) ${digits.slice(2,6)}-${digits.slice(6)}`;
+  return `(${digits.slice(0,2)}) ${digits.slice(2,7)}-${digits.slice(7)}`;
+};
 
 const logoSrc = "https://horizons-cdn.hostinger.com/d89750d7-1f5d-466f-8dd9-087252acee70/2d8010627a52ee48131ebed25f5ffc09.png";
 
@@ -34,7 +43,7 @@ const generatePassword = () => {
 };
 
 const Signup = () => {
-  const { signUp, signInWithGoogle } = useAuth();
+  const { signInWithGoogle } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
@@ -55,7 +64,8 @@ const Signup = () => {
   };
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.id]: e.target.value });
+    const { id, value } = e.target;
+    setFormData({ ...formData, [id]: id === 'phone' ? formatPhone(value) : value });
   };
 
   const handleGoogleSignup = async () => {
@@ -77,41 +87,17 @@ const Signup = () => {
     e.preventDefault();
     setIsLoading(true);
 
-    const generatedPassword = generatePassword();
-
     try {
-      // 1. Criar a conta
-      const { error: signUpError } = await signUp({
-        email: formData.email,
-        password: generatedPassword,
-        options: {
-          data: {
-            name: formData.name,
-            phone: formData.phone,
-          },
-        },
-      });
-
-      if (signUpError) throw signUpError;
-
-      // 2. Enviar senha por email via Edge Function
-      const { error: emailError } = await supabase.functions.invoke('send-welcome-email', {
+      const { data, error } = await supabase.functions.invoke('send-welcome-email', {
         body: {
           email: formData.email,
-          password: generatedPassword,
           name: formData.name,
+          phone: formData.phone,
         },
       });
 
-      if (emailError) {
-        console.error('Falha ao enviar email de boas-vindas:', emailError);
-        toast({
-          variant: "destructive",
-          title: "Atenção",
-          description: "Conta criada, mas houve um problema ao enviar o email com a senha. Entre em contato com o suporte.",
-          duration: 8000,
-        });
-      }
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
 
       setSuccessEmail(formData.email);
 
@@ -250,9 +236,10 @@ const Signup = () => {
                 </Label>
                 <Input
                   id="phone"
-                  placeholder="(00) 00000-0000"
+                  placeholder="(00) 0000-0000"
                   value={formData.phone}
                   onChange={handleChange}
+                  inputMode="numeric"
                 />
               </div>
 
