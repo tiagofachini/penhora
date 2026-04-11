@@ -16,12 +16,19 @@ export const AuthProvider = ({ children }) => {
   const CUSTOM_DOMAIN = 'https://go.penhora.app.br';
   const SITE_URL = `${CUSTOM_DOMAIN}/dashboard`;
 
-  const checkAdminStatus = useCallback(async () => {
+  const SUPER_ADMIN_EMAIL = 'emaildogago@gmail.com';
+
+  const checkAdminStatus = useCallback(async (email) => {
+    if (!email || email.toLowerCase() !== SUPER_ADMIN_EMAIL) {
+      setIsAdmin(false);
+      return;
+    }
     try {
         const { data, error } = await supabase.rpc('is_admin');
-        if (!error) setIsAdmin(!!data);
+        setIsAdmin(!error && !!data);
     } catch (e) {
         console.error("Admin check error", e);
+        setIsAdmin(false);
     }
   }, []);
 
@@ -30,7 +37,7 @@ export const AuthProvider = ({ children }) => {
     setUser(session?.user ?? null);
     setLoading(false);
     if (session?.user) {
-        await checkAdminStatus();
+        await checkAdminStatus(session.user.email);
     } else {
         setIsAdmin(false);
     }
