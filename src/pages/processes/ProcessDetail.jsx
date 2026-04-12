@@ -40,8 +40,19 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from '@/lib/utils';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.bubble.css';
+
+const PROCESS_PHASES = [
+  'Instauração',
+  'Citação',
+  'Penhora',
+  'Defesa',
+  'Expropriação',
+  'Satisfação do crédito',
+  'Extinção',
+];
 
 // Helper to convert image URL to base64
 const getBase64FromUrl = async (url) => {
@@ -85,6 +96,11 @@ const ProcessDetail = () => {
     const [currentDiligence, setCurrentDiligence] = useState(null);
     const [diligenceToDelete, setDiligenceToDelete] = useState(null);
     const [selectedDiligenceId, setSelectedDiligenceId] = useState(null);
+
+    // Phase inline edit
+    const [editingPhase, setEditingPhase] = useState(false);
+    const [phaseValue, setPhaseValue] = useState('');
+    const [savingPhase, setSavingPhase] = useState(false);
 
     const formatCurrency = (value) => {
         return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0);
@@ -132,6 +148,28 @@ const ProcessDetail = () => {
     useEffect(() => {
         fetchProcessDetails();
     }, [fetchProcessDetails]);
+
+    useEffect(() => {
+        if (process) setPhaseValue(process.current_phase || '');
+    }, [process]);
+
+    const handleSavePhase = async () => {
+        setSavingPhase(true);
+        try {
+            const { error } = await supabase
+                .from('processes')
+                .update({ current_phase: phaseValue || null })
+                .eq('id', id);
+            if (error) throw error;
+            setProcess(prev => ({ ...prev, current_phase: phaseValue }));
+            setEditingPhase(false);
+            toast({ title: 'Fase atualizada!' });
+        } catch (error) {
+            toast({ variant: 'destructive', title: 'Erro ao salvar fase', description: error.message });
+        } finally {
+            setSavingPhase(false);
+        }
+    };
 
     // Check Limit before opening item form
     const handleOpenItemForm = async (mode, dilId = null) => {
@@ -545,6 +583,49 @@ const ProcessDetail = () => {
                                     <p className="font-medium text-slate-700 truncate">{process.parties_info?.deposit_location || <span className="text-slate-400 italic">Não informado</span>}</p>
                                 </div>
                             </div>
+
+                            {/* Fase Atual */}
+                            <div className="mt-4 pt-4 border-t border-slate-100">
+                                <span className="text-xs text-slate-400 uppercase font-bold block mb-1.5">Fase Atual do Processo</span>
+                                {editingPhase ? (
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        <Select value={phaseValue} onValueChange={setPhaseValue}>
+                                            <SelectTrigger className="h-8 text-sm w-56">
+                                                <SelectValue placeholder="Selecione a fase" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {PROCESS_PHASES.map(phase => (
+                                                    <SelectItem key={phase} value={phase}>{phase}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        <Button size="sm" className="h-8" onClick={handleSavePhase} disabled={savingPhase}>
+                                            {savingPhase ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Salvar'}
+                                        </Button>
+                                        <Button size="sm" variant="ghost" className="h-8" onClick={() => { setEditingPhase(false); setPhaseValue(process.current_phase || ''); }}>
+                                            Cancelar
+                                        </Button>
+                                    </div>
+                                ) : (
+                                    <div className="flex items-center gap-2">
+                                        {process.current_phase ? (
+                                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">
+                                                {process.current_phase}
+                                            </span>
+                                        ) : (
+                                            <span className="text-sm text-slate-400 italic">Não definida</span>
+                                        )}
+                                        <button
+                                            onClick={() => setEditingPhase(true)}
+                                            className="text-slate-400 hover:text-blue-600 transition-colors"
+                                            title="Alterar fase"
+                                        >
+                                            <Edit className="h-3.5 w-3.5" />
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+
                             {process.summary && (
                                 <div className="mt-6 pt-4 border-t border-slate-100">
                                      <h3 className="text-sm font-semibold text-slate-600 mb-2 flex items-center gap-2"><FileText className="h-4 w-4"/> Resumo / Observações</h3>

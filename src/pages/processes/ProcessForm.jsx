@@ -11,6 +11,17 @@ import { Input } from '@/components/ui/input';
 import { Loader2, ArrowLeft, CheckCircle, FileText, Gavel, MapPin } from 'lucide-react';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
+const PROCESS_PHASES = [
+  'Instauração',
+  'Citação',
+  'Penhora',
+  'Defesa',
+  'Expropriação',
+  'Satisfação do crédito',
+  'Extinção',
+];
 
 const ProcessForm = () => {
   const { id } = useParams();
@@ -44,6 +55,7 @@ const ProcessForm = () => {
     state: '',
     
     summary: '',
+    current_phase: '',
   });
 
   // General Page State
@@ -133,6 +145,7 @@ const ProcessForm = () => {
               state: diligenceAddress.state || '',
               
               summary: data.summary || '',
+              current_phase: data.current_phase || '',
             });
           }
         } catch (error) {
@@ -241,6 +254,7 @@ const ProcessForm = () => {
       execution_date: formData.execution_date || null,
       execution_location: JSON.stringify(diligenceAddressObject),
       summary: formData.summary,
+      current_phase: formData.current_phase || null,
     };
 
     try {
@@ -327,6 +341,24 @@ const ProcessForm = () => {
                             placeholder="Nome do devedor" 
                         />
                     </div>
+                </div>
+
+                {/* Fase Atual do Processo */}
+                <div>
+                  <Label htmlFor="current_phase">Fase Atual do Processo</Label>
+                  <Select
+                    value={formData.current_phase}
+                    onValueChange={(val) => setFormData(prev => ({ ...prev, current_phase: val }))}
+                  >
+                    <SelectTrigger id="current_phase" className="mt-1">
+                      <SelectValue placeholder="Selecione a fase atual" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PROCESS_PHASES.map(phase => (
+                        <SelectItem key={phase} value={phase}>{phase}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 {/* Dados do Auto Section */}
