@@ -60,8 +60,7 @@ const Login = () => {
         if (!formData.email || !formData.password) throw new Error("Email e senha são obrigatórios");
         const { error } = await signIn({ email: formData.email, password: formData.password });
         if (error) throw error;
-        // Redirect to the full dashboard URL after successful password login
-        window.location.href = 'https://www.penhora.app.br/dashboard';
+        window.location.href = 'https://go.penhora.app.br/dashboard';
       }
     } catch (error) {
       console.error(error);

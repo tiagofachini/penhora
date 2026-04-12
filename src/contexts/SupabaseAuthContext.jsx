@@ -32,16 +32,57 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
+  // Ensures a row exists in public.users for every authenticated user.
+  // Critical for Google OAuth users who bypass the email signup flow.
+  const syncUserProfile = useCallback(async (authUser) => {
+    if (!authUser) return;
+    try {
+      const { data: existing } = await supabase
+        .from('users')
+        .select('id, name')
+        .eq('id', authUser.id)
+        .maybeSingle();
+
+      const googleName =
+        authUser.user_metadata?.full_name ||
+        authUser.user_metadata?.name ||
+        '';
+
+      if (!existing) {
+        // First login via Google — create the profile row
+        await supabase.from('users').insert({
+          id: authUser.id,
+          email: authUser.email,
+          name: googleName,
+        });
+      } else if (!existing.name && googleName) {
+        // Profile exists but name is empty — fill it from Google metadata
+        await supabase
+          .from('users')
+          .update({ name: googleName })
+          .eq('id', authUser.id);
+      }
+    } catch (e) {
+      console.error('Profile sync error:', e);
+    }
+  }, []);
+
   const handleSession = useCallback(async (session) => {
     setSession(session);
     setUser(session?.user ?? null);
     setLoading(false);
     if (session?.user) {
-        await checkAdminStatus(session.user.email);
+      await checkAdminStatus(session.user.email);
+      // Sync profile for OAuth users (no-op if row already exists with name)
+      const provider = session.user.app_metadata?.provider;
+      const providers = session.user.app_metadata?.providers ?? [];
+      if (provider === 'google' || providers.includes('google')) {
+        await syncUserProfile(session.user);
+      }
     } else {
-        setIsAdmin(false);
+      setIsAdmin(false);
     }
-  }, [checkAdminStatus]);
+  }, [checkAdminStatus, syncUserProfile]);
 
   useEffect(() => {
     const initAuth = async () => {

@@ -9,15 +9,9 @@ const DashboardRedirect = () => {
 
   useEffect(() => {
     if (!loading) {
-      if (isAdmin) {
-        // Admins might want a different default view, but for now /processes is fine.
-        // They can navigate to /admin via the header.
-        navigate('/processes', { replace: true });
-      } else {
-        navigate('/processes', { replace: true });
-      }
+      navigate('/dashboard', { replace: true });
     }
-  }, [loading, isAdmin, navigate]);
+  }, [loading, navigate]);
 
   return (
     <div className="h-screen w-full flex items-center justify-center">
