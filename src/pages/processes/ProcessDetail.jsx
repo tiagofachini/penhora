@@ -608,14 +608,9 @@ const ProcessDetail = () => {
                                 <span>Detalhes</span>
                             </div>
                             
-                            <div className="flex justify-between items-center">
-                                <h1 className="text-3xl font-bold text-slate-900 tracking-tight">
-                                    {process.process_number || 'Sem número'}
-                                </h1>
-                                <Button variant="outline" size="sm" onClick={() => navigate(`/processes/${id}/edit`)}>
-                                    <Edit className="mr-2 h-4 w-4" /> Editar Processo
-                                </Button>
-                            </div>
+                            <h1 className="text-3xl font-bold text-slate-900 tracking-tight">
+                                {process.process_number || 'Sem número'}
+                            </h1>
 
                             <div className="mt-4 flex flex-wrap gap-6 text-sm">
                                 <div className="flex flex-col">
@@ -694,28 +689,31 @@ const ProcessDetail = () => {
                                 <div className="mt-6 pt-4 border-t border-slate-100">
                                      <h3 className="text-sm font-semibold text-slate-600 mb-2 flex items-center gap-2"><FileText className="h-4 w-4"/> Resumo / Observações</h3>
                                      <div className="prose prose-sm max-w-none text-slate-600 bg-slate-50 p-3 rounded-md">
-                                         <ReactQuill 
-                                             value={process.summary} 
-                                             readOnly={true} 
-                                             theme="bubble" 
+                                         <ReactQuill
+                                             value={process.summary}
+                                             readOnly={true}
+                                             theme="bubble"
                                              modules={{toolbar: false}}
                                          />
                                      </div>
                                 </div>
                             )}
+
+                            {/* Actions */}
+                            <div className="mt-4 pt-4 border-t border-slate-100 flex flex-wrap gap-2">
+                                <Button variant="outline" size="sm" onClick={handleGeneratePDF} disabled={isGeneratingPdf}>
+                                    {isGeneratingPdf ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Printer className="mr-2 h-4 w-4"/>}
+                                    Gerar Auto de Penhora (PDF)
+                                </Button>
+                                <Button variant="outline" size="sm" onClick={() => navigate(`/processes/${id}/edit`)}>
+                                    <Edit className="mr-2 h-4 w-4" /> Editar Processo
+                                </Button>
+                                <Button size="sm" onClick={() => { setCurrentDiligence(null); setIsDiligenceFormOpen(true); }}>
+                                    <Truck className="mr-2 h-4 w-4" /> Agendar Diligência
+                                </Button>
+                            </div>
                         </div>
                     </div>
-                </div>
-
-                {/* Top Actions Bar */}
-                <div className="flex flex-wrap justify-end gap-3">
-                    <Button variant="outline" size="sm" onClick={handleGeneratePDF} disabled={isGeneratingPdf}>
-                        {isGeneratingPdf ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Printer className="mr-2 h-4 w-4"/>} 
-                        Gerar Auto (PDF)
-                    </Button>
-                    <Button size="sm" onClick={() => { setCurrentDiligence(null); setIsDiligenceFormOpen(true); }}>
-                        <Truck className="mr-2 h-4 w-4" /> Agendar Diligência
-                    </Button>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
