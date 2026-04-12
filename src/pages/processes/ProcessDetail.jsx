@@ -43,6 +43,20 @@ import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.bubble.css';
+import { MapContainer, TileLayer, Marker } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
+
+// Fix Leaflet default marker icons
+const _iconUrl = 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png';
+const _iconShadow = 'https://unpkg.com/leaflet@1.9.4/dist/images/shadow-icon.png';
+L.Marker.prototype.options.icon = L.icon({
+    iconUrl: _iconUrl,
+    shadowUrl: _iconShadow,
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+});
 
 const PROCESS_PHASES = [
   'Instauração',
@@ -118,6 +132,9 @@ const ProcessDetail = () => {
     const [phaseValue, setPhaseValue] = useState('');
     const [savingPhase, setSavingPhase] = useState(false);
 
+    // Deposit location map
+    const [depositMapCoordinates, setDepositMapCoordinates] = useState(null);
+
     const formatCurrency = (value) => {
         return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0);
     };
@@ -167,6 +184,26 @@ const ProcessDetail = () => {
 
     useEffect(() => {
         if (process) setPhaseValue(process.current_phase || '');
+    }, [process]);
+
+    useEffect(() => {
+        if (!process?.parties_info?.deposit_location) return;
+        let loc = process.parties_info.deposit_location;
+        try {
+            if (typeof loc === 'string') loc = JSON.parse(loc);
+        } catch (_) { return; }
+        if (!loc?.logradouro) return;
+        const query = `${loc.logradouro}, ${loc.number || ''}, ${loc.city || ''}, ${loc.state || ''}, Brazil`;
+        fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`, {
+            headers: { 'User-Agent': 'PenhoraApp/1.0' }
+        })
+            .then(r => r.json())
+            .then(data => {
+                if (data?.length > 0) {
+                    setDepositMapCoordinates([parseFloat(data[0].lat), parseFloat(data[0].lon)]);
+                }
+            })
+            .catch(() => {});
     }, [process]);
 
     const handleSavePhase = async () => {
@@ -598,9 +635,18 @@ const ProcessDetail = () => {
                                 <div className="hidden md:block w-px bg-slate-200"></div>
                                 <div className="flex flex-col">
                                     <span className="text-xs text-slate-400 uppercase font-bold">Local do Depósito</span>
-                                    <p className="font-medium text-slate-700 truncate">{process.parties_info?.deposit_location || <span className="text-slate-400 italic">Não informado</span>}</p>
+                                    <p className="font-medium text-slate-700">{process.parties_info?.deposit_location ? formatAddress(process.parties_info.deposit_location) : <span className="text-slate-400 italic">Não informado</span>}</p>
                                 </div>
                             </div>
+
+                            {depositMapCoordinates && (
+                                <div className="mt-3 h-[200px] w-full rounded-lg border border-slate-200 overflow-hidden relative z-0">
+                                    <MapContainer center={depositMapCoordinates} zoom={15} scrollWheelZoom={false} style={{ height: '100%', width: '100%' }}>
+                                        <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                                        <Marker position={depositMapCoordinates} />
+                                    </MapContainer>
+                                </div>
+                            )}
 
                             {/* Fase Atual */}
                             <div className="mt-4 pt-4 border-t border-slate-100">
