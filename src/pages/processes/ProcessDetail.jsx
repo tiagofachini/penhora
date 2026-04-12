@@ -54,6 +54,22 @@ const PROCESS_PHASES = [
   'Extinção',
 ];
 
+// Returns the display label for a diligence — "Vencida" when scheduled but overdue
+const getDilStatus = (dil) => {
+    if (dil.status === 'Agendada' && new Date(dil.date) < new Date()) return 'Vencida';
+    return dil.status;
+};
+
+const DIL_STYLE = {
+    Agendada:  { badge: 'bg-blue-100 text-blue-700',    dot: 'bg-blue-400',   row: 'bg-blue-50/40 border-blue-100'    },
+    Vencida:   { badge: 'bg-orange-100 text-orange-700', dot: 'bg-orange-400', row: 'bg-orange-50/40 border-orange-100' },
+    Realizada: { badge: 'bg-green-100 text-green-700',  dot: 'bg-green-500',  row: 'bg-green-50/40 border-green-100'   },
+    Cancelada: { badge: 'bg-red-50 text-red-500',       dot: 'bg-red-300',    row: 'bg-red-50/30 border-red-100'       },
+    Adiada:    { badge: 'bg-amber-50 text-amber-600',   dot: 'bg-amber-400',  row: 'bg-amber-50/40 border-amber-100'   },
+};
+const getDilStyle = (status) =>
+    DIL_STYLE[status] || { badge: 'bg-slate-100 text-slate-500', dot: 'bg-slate-300', row: 'bg-white border-slate-100' };
+
 // Helper to convert image URL to base64
 const getBase64FromUrl = async (url) => {
     if (!url) return null;
@@ -230,17 +246,19 @@ const ProcessDetail = () => {
         return future[0] || null;
     }, [diligences]);
 
-    // Upcoming: Agendada, sorted soonest first
+    // Upcoming: genuinely future Agendada only (overdue go to history)
     const upcomingDiligences = useMemo(() => {
+        const now = new Date();
         return diligences
-            .filter(d => d.status === 'Agendada')
+            .filter(d => d.status === 'Agendada' && new Date(d.date) >= now)
             .sort((a, b) => new Date(a.date) - new Date(b.date));
     }, [diligences]);
 
-    // Past: everything else, sorted most recent first
+    // History: completed/cancelled/postponed + overdue scheduled
     const pastDiligences = useMemo(() => {
+        const now = new Date();
         return diligences
-            .filter(d => d.status !== 'Agendada')
+            .filter(d => d.status !== 'Agendada' || new Date(d.date) < now)
             .sort((a, b) => new Date(b.date) - new Date(a.date));
     }, [diligences]);
 
@@ -679,23 +697,18 @@ const ProcessDetail = () => {
                                     const addr = formatAddress(dil.location);
                                     const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addr)}`;
                                     const dateObj = new Date(dil.date);
-                                    const isOverdue = dateObj < new Date();
                                     const dilItemCount = (itemsByDiligence[dil.id] || []).length;
 
                                     return (
                                         <div key={dil.id} className={cn(
                                             "rounded-xl border p-4 transition-shadow",
-                                            isNext && !isOverdue ? "border-blue-300 bg-blue-50/40 shadow-md" :
-                                            isOverdue ? "border-amber-300 bg-amber-50/30 shadow-sm" :
-                                            "border-slate-200 bg-white shadow-sm"
+                                            isNext ? "border-blue-300 bg-blue-50/40 shadow-md" : "border-slate-200 bg-white shadow-sm"
                                         )}>
                                             <div className="flex items-start gap-3">
                                                 {/* Date box */}
                                                 <div className={cn(
                                                     "flex flex-col items-center rounded-xl px-3 py-2 flex-shrink-0 min-w-[56px] text-center",
-                                                    isNext && !isOverdue ? "bg-blue-100 text-blue-700" :
-                                                    isOverdue ? "bg-amber-100 text-amber-700" :
-                                                    "bg-slate-100 text-slate-600"
+                                                    isNext ? "bg-blue-100 text-blue-700" : "bg-slate-100 text-slate-600"
                                                 )}>
                                                     <span className="text-2xl font-bold leading-none">
                                                         {dateObj.toLocaleDateString('pt-BR', { day: '2-digit' })}
@@ -713,11 +726,9 @@ const ProcessDetail = () => {
                                                     <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
                                                         <span className={cn(
                                                             "text-[11px] font-semibold uppercase px-2 py-0.5 rounded-full",
-                                                            isOverdue ? "bg-amber-100 text-amber-700" :
-                                                            isNext ? "bg-blue-100 text-blue-700" :
-                                                            "bg-slate-100 text-slate-600"
+                                                            isNext ? "bg-blue-100 text-blue-700" : "bg-slate-100 text-slate-600"
                                                         )}>
-                                                            {isOverdue ? "Vencida" : isNext ? "Próxima" : "Agendada"}
+                                                            {isNext ? "Próxima" : "Agendada"}
                                                         </span>
                                                         {dilItemCount > 0 && (
                                                             <span className="text-xs text-slate-500">{dilItemCount} {dilItemCount === 1 ? 'bem' : 'bens'}</span>
@@ -760,31 +771,22 @@ const ProcessDetail = () => {
                             <div className="space-y-2 pt-1">
                                 <p className="text-[11px] font-semibold uppercase tracking-widest text-slate-400">Histórico</p>
                                 {pastDiligences.map(dil => {
-                                    const isCompleted = dil.status === 'Realizada';
-                                    const isCancelled = ['Cancelada', 'Adiada'].includes(dil.status);
+                                    const displayStatus = getDilStatus(dil);
+                                    const style = getDilStyle(displayStatus);
                                     const dilItemCount = (itemsByDiligence[dil.id] || []).length;
                                     const dilTotal = (itemsByDiligence[dil.id] || []).reduce((s, i) =>
                                         s + ((parseFloat(i.initial_valuation) || 0) * (parseFloat(i.quantity) || 1)), 0);
 
                                     return (
-                                        <div key={dil.id} className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-white border border-slate-100 hover:border-slate-200 transition-colors">
-                                            <div className={cn(
-                                                "h-2.5 w-2.5 rounded-full flex-shrink-0",
-                                                isCompleted ? "bg-green-500" :
-                                                isCancelled ? "bg-slate-300" : "bg-amber-400"
-                                            )} />
+                                        <div key={dil.id} className={cn("flex items-center gap-3 px-3 py-2.5 rounded-lg border transition-colors", style.row)}>
+                                            <div className={cn("h-2.5 w-2.5 rounded-full flex-shrink-0", style.dot)} />
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex items-center gap-2 flex-wrap">
                                                     <span className="text-sm font-medium text-slate-700">
                                                         {new Date(dil.date).toLocaleDateString('pt-BR')}
                                                     </span>
-                                                    <span className={cn(
-                                                        "text-xs px-1.5 py-0.5 rounded font-medium",
-                                                        isCompleted ? "bg-green-50 text-green-700" :
-                                                        isCancelled ? "bg-slate-100 text-slate-500" :
-                                                        "bg-amber-50 text-amber-700"
-                                                    )}>
-                                                        {dil.status}
+                                                    <span className={cn("text-xs px-1.5 py-0.5 rounded font-medium", style.badge)}>
+                                                        {displayStatus}
                                                     </span>
                                                     {dilItemCount > 0 && (
                                                         <span className="text-xs text-slate-400">{dilItemCount} {dilItemCount === 1 ? 'bem' : 'bens'}</span>
@@ -838,6 +840,8 @@ const ProcessDetail = () => {
                                 })
                                 .map(dil => {
                                     const items = itemsByDiligence[dil.id] || [];
+                                    const displayStatus = getDilStatus(dil);
+                                    const dilStyle = getDilStyle(displayStatus);
                                     const isCompleted = dil.status === 'Realizada';
                                     const dilTotal = items.reduce((s, i) =>
                                         s + ((parseFloat(i.initial_valuation) || 0) * (parseFloat(i.quantity) || 1)), 0);
@@ -857,13 +861,8 @@ const ProcessDetail = () => {
                                                     <span className="font-semibold text-slate-700 text-sm">
                                                         {new Date(dil.date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
                                                     </span>
-                                                    <span className={cn(
-                                                        "text-xs px-2 py-0.5 rounded-full font-medium",
-                                                        isCompleted ? "bg-green-100 text-green-700" :
-                                                        dil.status === 'Agendada' ? "bg-blue-100 text-blue-700" :
-                                                        "bg-slate-100 text-slate-500"
-                                                    )}>
-                                                        {dil.status}
+                                                    <span className={cn("text-xs px-2 py-0.5 rounded-full font-medium", dilStyle.badge)}>
+                                                        {displayStatus}
                                                     </span>
                                                     {items.length > 0 && (
                                                         <span className="text-xs text-slate-400">• {items.length} {items.length === 1 ? 'bem' : 'bens'}</span>
