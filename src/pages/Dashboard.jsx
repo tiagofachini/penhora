@@ -221,7 +221,7 @@ const Dashboard = () => {
   return (
     <>
       <Helmet>
-        <title>Dashboard | Penhora.app</title>
+        <title>Dashboard | Penhora.app.br</title>
         <meta name="robots" content="noindex" />
       </Helmet>
 

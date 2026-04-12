@@ -117,7 +117,7 @@ const Signup = () => {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4 py-12">
         <Helmet>
-          <title>Conta Criada - Penhora.app</title>
+          <title>Conta Criada - Penhora.app.br</title>
         </Helmet>
         <Card className="w-full max-w-md shadow-lg">
           <CardHeader className="space-y-1">
@@ -161,7 +161,7 @@ const Signup = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4 py-12">
       <Helmet>
-        <title>Cadastro - Penhora.app</title>
+        <title>Cadastro - Penhora.app.br</title>
       </Helmet>
 
       <Card className="w-full max-w-md shadow-lg">

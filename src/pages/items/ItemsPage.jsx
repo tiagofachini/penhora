@@ -7,7 +7,7 @@ const ItemsPage = () => {
   return (
     <>
       <Helmet>
-        <title>Itens - Penhora.app</title>
+        <title>Itens - Penhora.app.br</title>
         <meta name="description" content="Página de listagem de itens (funcionalidade em desenvolvimento)." />
       </Helmet>
       <div className="space-y-6">

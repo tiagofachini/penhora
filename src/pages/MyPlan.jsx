@@ -184,7 +184,7 @@ const MyPlan = () => {
 
   return (
     <>
-      <Helmet><title>Meu Plano - Penhora.app</title></Helmet>
+      <Helmet><title>Meu Plano - Penhora.app.br</title></Helmet>
 
       <div className="space-y-8 max-w-5xl mx-auto pb-10">
         <div>

@@ -120,7 +120,7 @@ const Checkout = () => {
   return (
     <>
       <Helmet>
-        <title>Checkout - {selectedPlan.name} - Penhora.app</title>
+        <title>Checkout - {selectedPlan.name} - Penhora.app.br</title>
       </Helmet>
       <main className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">

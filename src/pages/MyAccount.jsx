@@ -100,7 +100,7 @@ const MyAccount = () => {
   return (
     <>
       <Helmet>
-        <title>Minha Conta - Penhora.app</title>
+        <title>Minha Conta - Penhora.app.br</title>
       </Helmet>
       
       <div className="max-w-2xl mx-auto space-y-6">

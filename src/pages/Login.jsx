@@ -79,7 +79,7 @@ const Login = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4 py-12">
       <Helmet>
-        <title>Login - Penhora.app</title>
+        <title>Login - Penhora.app.br</title>
       </Helmet>
       
       <Card className="w-full max-w-md">

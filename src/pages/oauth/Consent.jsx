@@ -122,7 +122,7 @@ const Consent = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4 py-12">
       <Helmet>
-        <title>Autorização de Acesso - Penhora.app</title>
+        <title>Autorização de Acesso - Penhora.app.br</title>
       </Helmet>
 
       <Card className="w-full max-w-md shadow-lg border-t-4 border-t-primary">

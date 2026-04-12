@@ -238,7 +238,7 @@ const CalendarPage = () => {
   return (
     <>
       <Helmet>
-        <title>Agenda de Diligências - Penhora.app</title>
+        <title>Agenda de Diligências - Penhora.app.br</title>
       </Helmet>
 
       <div className="flex flex-col h-full space-y-4">

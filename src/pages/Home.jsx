@@ -29,7 +29,7 @@ const Home = () => {
   return (
     <>
       <Helmet>
-        <title>Penhora.app.br | Gestão de Penhoras e Avaliação para Oficiais de Justiça</title>
+        <title>Penhora.app.br - O melhor software para Gestão de Penhoras</title>
         <meta name="description" content="Otimize suas diligências com o Penhora.app. Identificação por foto, conformidade com CPC (Art. 838), geração automática de autos em PDF e gestão completa de penhoras." />
         <meta name="keywords" content="penhora, oficial de justiça, avaliação de bens, cpc 838, auto de penhora, gestão de mandados, tribunal, judiciário, app para oficiais" />
         <meta name="robots" content="index, follow" />

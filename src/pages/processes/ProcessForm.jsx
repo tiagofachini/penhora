@@ -288,7 +288,7 @@ const ProcessForm = () => {
   return (
     <>
       <Helmet>
-        <title>{isEditing ? 'Editar Penhora' : 'Nova Penhora'} - Penhora.app</title> 
+        <title>{isEditing ? 'Editar Penhora' : 'Nova Penhora'} - Penhora.app.br</title> 
       </Helmet>
       
       <div className="max-w-3xl mx-auto space-y-4">

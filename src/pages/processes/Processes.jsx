@@ -55,7 +55,7 @@ const Processes = () => {
 
     return (
         <div className="space-y-6">
-            <Helmet><title>Penhoras - Penhora.app</title></Helmet>
+            <Helmet><title>Penhoras - Penhora.app.br</title></Helmet>
             
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>

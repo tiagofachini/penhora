@@ -114,7 +114,7 @@ const AuditPage = () => {
 
     return (
         <div className="space-y-6 pb-20">
-            <Helmet><title>Auditoria - Penhora.app</title></Helmet>
+            <Helmet><title>Auditoria - Penhora.app.br</title></Helmet>
 
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>

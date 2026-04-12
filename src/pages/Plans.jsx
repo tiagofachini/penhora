@@ -8,7 +8,7 @@ const Plans = () => {
   return (
     <>
       <Helmet>
-        <title>Planos e preços - Penhora.app</title>
+        <title>Planos e preços - Penhora.app.br</title>
         <meta name="description" content="Escolha o plano ideal: Starter com 7 dias de teste gratuito ou Professional com preços dinâmicos a partir de R$ 29/mês." />
       </Helmet>
 

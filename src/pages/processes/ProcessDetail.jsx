@@ -588,7 +588,7 @@ const ProcessDetail = () => {
     return (
         <>
             <Helmet>
-                <title>{process.process_number} - Detalhes</title>
+                <title>{process.process_number} - Detalhes | Penhora.app.br</title>
             </Helmet>
 
             <div className="space-y-6 pb-20">

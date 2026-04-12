@@ -115,7 +115,7 @@ const MyTeam = () => {
   return (
     <>
       <Helmet>
-        <title>Minha Equipe - Penhora.app</title>
+        <title>Minha Equipe - Penhora.app.br</title>
       </Helmet>
       
       <div className="max-w-4xl mx-auto space-y-8">
