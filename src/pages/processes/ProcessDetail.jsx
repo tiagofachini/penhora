@@ -813,7 +813,6 @@ const ProcessDetail = () => {
                                                     items.map(item => {
                                                         const qty = parseFloat(item.quantity) || 1;
                                                         const val = parseFloat(item.initial_valuation) || 0;
-                                                        const itemTotal = qty * val;
 
                                                         return (
                                                             <div key={item.id} className="p-4 flex gap-4 hover:bg-slate-50/50 transition-colors">
@@ -888,18 +887,6 @@ const ProcessDetail = () => {
                                                                             <span className="text-[10px] uppercase text-slate-400 font-semibold block">Valor Unit.</span>
                                                                             <span className="font-semibold text-slate-700">{formatCurrency(val)}</span>
                                                                         </div>
-                                                                        {qty > 1 && (
-                                                                            <div>
-                                                                                <span className="text-[10px] uppercase text-slate-400 font-semibold block">Total</span>
-                                                                                <span className="font-bold text-green-700 text-base">{formatCurrency(itemTotal)}</span>
-                                                                            </div>
-                                                                        )}
-                                                                        {qty <= 1 && val > 0 && (
-                                                                            <div>
-                                                                                <span className="text-[10px] uppercase text-slate-400 font-semibold block">Valor</span>
-                                                                                <span className="font-bold text-green-700 text-base">{formatCurrency(val)}</span>
-                                                                            </div>
-                                                                        )}
                                                                     </div>
                                                                 </div>
                                                             </div>
