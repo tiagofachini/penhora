@@ -395,7 +395,17 @@ const SeizedItemForm = ({ isOpen, onOpenChange, processId, item, onSuccess, init
               handleBarcodeLookup(result.barcode);
           }
 
-          toast({ title: "Análise concluída", className: "bg-blue-50 border-blue-200" });
+          const identified = result.description || result.brand || result.model || result.characteristics;
+          if (identified) {
+              toast({ title: "Análise concluída", description: "Campos preenchidos automaticamente. Revise antes de salvar.", className: "bg-blue-50 border-blue-200" });
+          } else {
+              toast({
+                  title: "Imagem aceita, produto não identificado",
+                  description: "A imagem foi anexada, mas nenhum produto foi reconhecido. Preencha os campos manualmente.",
+                  className: "bg-amber-50 border-amber-200",
+                  duration: 6000,
+              });
+          }
       } catch {
           toast({ variant: "destructive", title: "Falha na análise automática" });
       } finally {
@@ -499,12 +509,9 @@ const SeizedItemForm = ({ isOpen, onOpenChange, processId, item, onSuccess, init
         const fileName = `${user.id}/${Date.now()}.jpg`;
         const { error: uploadError } = await supabase.storage.from('item-photos').upload(fileName, imageFile);
         if (uploadError) throw uploadError;
-        
+
         const { data: { publicUrl } } = supabase.storage.from('item-photos').getPublicUrl(fileName);
-        
-        // CRITICAL: Replace default Supabase domain with Custom Domain
-        // If publicUrl is 'https://<project>.supabase.co/...', we change it to 'https://go.penhora.app.br/...'
-        finalPhotoUrl = publicUrl.replace(/https:\/\/[^/]+\.supabase\.co/, CUSTOM_DOMAIN);
+        finalPhotoUrl = publicUrl;
       }
 
       const itemData = {
@@ -592,13 +599,27 @@ const SeizedItemForm = ({ isOpen, onOpenChange, processId, item, onSuccess, init
                             )}
                         </div>
                     ) : (
-                        <div className="grid grid-cols-2 gap-4">
-                            <Button type="button" variant="outline" className="h-24 flex flex-col gap-2" onClick={() => fileInputRef.current?.click()} disabled={analyzing}>
-                                <Upload className="h-6 w-6"/> <span className="text-xs">Upload</span>
-                            </Button>
-                            <Button type="button" variant="outline" className="h-24 flex flex-col gap-2" onClick={handleStartCamera} disabled={analyzing}>
-                                <Camera className="h-6 w-6"/> <span className="text-xs">Câmera</span>
-                            </Button>
+                        <div className="grid grid-cols-2 gap-3">
+                            <button
+                                type="button"
+                                onClick={() => fileInputRef.current?.click()}
+                                disabled={analyzing}
+                                className="flex flex-col items-center gap-2 rounded-lg border border-slate-200 bg-white p-4 text-left hover:border-blue-400 hover:bg-blue-50/40 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                <Upload className="h-6 w-6 text-slate-500"/>
+                                <span className="text-sm font-medium text-slate-700">Upload de imagem</span>
+                                <span className="text-xs text-slate-400 text-center leading-snug">Escolha uma foto já salva. A IA tenta identificar o produto e preencher os campos automaticamente.</span>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleStartCamera}
+                                disabled={analyzing}
+                                className="flex flex-col items-center gap-2 rounded-lg border border-slate-200 bg-white p-4 text-left hover:border-blue-400 hover:bg-blue-50/40 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                <Camera className="h-6 w-6 text-slate-500"/>
+                                <span className="text-sm font-medium text-slate-700">Fotografar agora</span>
+                                <span className="text-xs text-slate-400 text-center leading-snug">Abre a câmera para fotografia em tempo real. Após capturar, a IA analisa e sugere nome, marca e modelo.</span>
+                            </button>
                             <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileSelect} />
                         </div>
                     )}

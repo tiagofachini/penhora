@@ -84,6 +84,14 @@ const DIL_STYLE = {
 const getDilStyle = (status) =>
     DIL_STYLE[status] || { badge: 'bg-slate-100 text-slate-500', dot: 'bg-slate-300', row: 'bg-white border-slate-100' };
 
+// Normalize photo URLs: items saved before the domain-replacement bug was fixed
+// may have 'go.penhora.app.br' as the host (the Hostinger frontend domain, not Supabase).
+// Convert those back to the actual Supabase Storage origin so images load correctly.
+const normalizePhotoUrl = (url) => {
+    if (!url) return url;
+    return url.replace('https://go.penhora.app.br/storage/', 'https://hsvxxhvfmgzopkfyhuac.supabase.co/storage/');
+};
+
 // Helper to convert image URL to base64
 const getBase64FromUrl = async (url) => {
     if (!url) return null;
@@ -377,7 +385,7 @@ const ProcessDetail = () => {
             const addItemsTable = async (items) => {
                  const tableBody = [];
                  for (const item of items) {
-                     const imgData = await getBase64FromUrl(item.photo_url);
+                     const imgData = await getBase64FromUrl(normalizePhotoUrl(item.photo_url));
                      const qtd = parseFloat(item.quantity) || 1;
                      const val = parseFloat(item.initial_valuation) || 0;
                      const total = qtd * val;
@@ -966,10 +974,10 @@ const ProcessDetail = () => {
                                                                 <div className="w-28 h-28 rounded-lg bg-slate-100 flex-shrink-0 overflow-hidden border border-slate-200">
                                                                     {item.photo_url ? (
                                                                         <img
-                                                                            src={item.photo_url}
+                                                                            src={normalizePhotoUrl(item.photo_url)}
                                                                             alt={item.item_description}
                                                                             className="w-full h-full object-cover cursor-zoom-in hover:scale-105 transition-transform"
-                                                                            onClick={() => window.open(item.photo_url, '_blank')}
+                                                                            onClick={() => window.open(normalizePhotoUrl(item.photo_url), '_blank')}
                                                                         />
                                                                     ) : (
                                                                         <div className="w-full h-full flex flex-col items-center justify-center text-slate-300">
