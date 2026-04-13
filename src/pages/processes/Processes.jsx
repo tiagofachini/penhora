@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { Button } from '@/components/ui/button';
@@ -7,11 +7,28 @@ import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
-import { 
-  Plus, Search, FileText, MapPin, 
-  ArrowRight
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Plus, Search, FileText, MapPin,
+  ArrowRight, X, SlidersHorizontal,
 } from 'lucide-react';
 import { formatAddress } from '@/lib/address';
+
+const PROCESS_PHASES = [
+  'Instauração',
+  'Citação',
+  'Penhora',
+  'Defesa',
+  'Expropriação',
+  'Satisfação do crédito',
+  'Extinção',
+];
 
 const Processes = () => {
     const { user } = useAuth();
@@ -20,6 +37,7 @@ const Processes = () => {
     const [processes, setProcesses] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+    const [phaseFilter, setPhaseFilter] = useState('');
 
     useEffect(() => {
         fetchProcesses();
@@ -30,7 +48,11 @@ const Processes = () => {
             setLoading(true);
             const { data, error } = await supabase
                 .from('processes')
-                .select('*')
+                .select(`
+                    *,
+                    seized_items(item_description, brand, initial_valuation, characteristics),
+                    diligences(description)
+                `)
                 .eq('user_id', user.id)
                 .order('created_at', { ascending: false });
 
@@ -44,19 +66,45 @@ const Processes = () => {
         }
     };
 
-    const filteredProcesses = processes.filter(proc => {
-        const term = searchTerm.toLowerCase();
-        return (
-            (proc.process_number && proc.process_number.toLowerCase().includes(term)) ||
-            (proc.parties_info?.exequente && proc.parties_info.exequente.toLowerCase().includes(term)) ||
-            (proc.parties_info?.executado && proc.parties_info.executado.toLowerCase().includes(term))
-        );
-    });
+    const filteredProcesses = useMemo(() => {
+        return processes.filter(proc => {
+            // Fase filter (exact match)
+            if (phaseFilter && proc.current_phase !== phaseFilter) return false;
+
+            // Text search across all fields
+            const term = searchTerm.toLowerCase().trim();
+            if (!term) return true;
+
+            const textFields = [
+                proc.process_number,
+                proc.current_phase,
+                proc.parties_info?.exequente,
+                proc.parties_info?.executado,
+                proc.parties_info?.depositary,
+                formatAddress(proc.execution_location),
+                formatAddress(proc.parties_info?.deposit_location),
+                // Seized items
+                ...(proc.seized_items || []).flatMap(item => [
+                    item.item_description,
+                    item.brand,
+                    item.characteristics,
+                    item.initial_valuation != null ? String(item.initial_valuation) : null,
+                ]),
+                // Diligences
+                ...(proc.diligences || []).map(d => d.description),
+            ];
+
+            return textFields.some(f => f && f.toLowerCase().includes(term));
+        });
+    }, [processes, searchTerm, phaseFilter]);
+
+    const hasFilters = searchTerm.trim() !== '' || phaseFilter !== '';
+    const clearFilters = () => { setSearchTerm(''); setPhaseFilter(''); };
 
     return (
         <div className="space-y-6">
             <Helmet><title>Penhoras - Penhora.app.br</title></Helmet>
-            
+
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                     <h1 className="text-3xl font-bold text-slate-800 tracking-tight">Minhas Penhoras</h1>
@@ -68,32 +116,67 @@ const Processes = () => {
                 </Button>
             </div>
 
-            <div className="flex gap-2">
+            {/* Filter bar */}
+            <div className="flex flex-col sm:flex-row gap-2">
                 <div className="relative flex-1">
                     <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
-                    <Input 
-                        placeholder="Buscar por número do processo, exequente ou executado..." 
+                    <Input
+                        placeholder="Buscar por processo, partes, endereço, depositário, bem, marca, valor ou diligência…"
                         className="pl-9 bg-white"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
                 </div>
+
+                <div className="flex gap-2">
+                    <Select value={phaseFilter} onValueChange={setPhaseFilter}>
+                        <SelectTrigger className="w-48 bg-white">
+                            <SlidersHorizontal className="h-4 w-4 text-slate-400 mr-2 shrink-0" />
+                            <SelectValue placeholder="Fase" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {PROCESS_PHASES.map(phase => (
+                                <SelectItem key={phase} value={phase}>{phase}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+
+                    {hasFilters && (
+                        <Button variant="outline" size="icon" onClick={clearFilters} title="Limpar filtros" className="shrink-0">
+                            <X className="h-4 w-4" />
+                        </Button>
+                    )}
+                </div>
             </div>
+
+            {/* Results indicator */}
+            {hasFilters && !loading && (
+                <p className="text-sm text-slate-500">
+                    {filteredProcesses.length === 0
+                        ? 'Nenhuma penhora corresponde aos filtros aplicados.'
+                        : `${filteredProcesses.length} penhora${filteredProcesses.length !== 1 ? 's' : ''} encontrada${filteredProcesses.length !== 1 ? 's' : ''}`
+                    }
+                </p>
+            )}
 
             {loading ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                     {[1,2,3].map(i => <div key={i} className="h-48 bg-slate-100 animate-pulse rounded-xl" />)}
+                    {[1,2,3].map(i => <div key={i} className="h-48 bg-slate-100 animate-pulse rounded-xl" />)}
                 </div>
             ) : filteredProcesses.length === 0 ? (
-                 <div className="text-center py-20 bg-slate-50 rounded-xl border-2 border-dashed border-slate-200">
+                <div className="text-center py-20 bg-slate-50 rounded-xl border-2 border-dashed border-slate-200">
                     <div className="mx-auto h-12 w-12 text-slate-300 mb-4">
                         <FileText className="h-full w-full" />
                     </div>
                     <h3 className="text-lg font-medium text-slate-900">Nenhuma penhora encontrada</h3>
                     <p className="text-slate-500 mt-1 mb-6 max-w-sm mx-auto">
-                        {searchTerm ? "Tente ajustar os termos da sua busca." : "Comece criando seu primeiro auto de penhora digital."}
+                        {hasFilters ? 'Tente ajustar ou limpar os filtros.' : 'Comece criando seu primeiro auto de penhora digital.'}
                     </p>
-                    {!searchTerm && (
+                    {hasFilters ? (
+                        <Button onClick={clearFilters} variant="outline">
+                            <X className="mr-2 h-4 w-4" /> Limpar filtros
+                        </Button>
+                    ) : (
                         <Button onClick={() => navigate('/processes/new')} variant="outline">
                             <Plus className="mr-2 h-4 w-4" /> Criar Penhora
                         </Button>
@@ -108,9 +191,16 @@ const Processes = () => {
                                     <div className="bg-blue-100 text-blue-700 p-2 rounded-lg">
                                         <FileText className="h-5 w-5" />
                                     </div>
-                                    <span className="text-xs font-mono text-slate-400 bg-white px-2 py-1 rounded border">
-                                        {new Date(proc.created_at).toLocaleDateString()}
-                                    </span>
+                                    <div className="flex items-center gap-2">
+                                        {proc.current_phase && (
+                                            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
+                                                {proc.current_phase}
+                                            </span>
+                                        )}
+                                        <span className="text-xs font-mono text-slate-400 bg-white px-2 py-1 rounded border">
+                                            {new Date(proc.created_at).toLocaleDateString()}
+                                        </span>
+                                    </div>
                                 </div>
                                 <h3 className="font-bold text-lg text-slate-900 mt-3 group-hover:text-blue-700 transition-colors">
                                     {proc.process_number || "Sem Número"}
@@ -127,7 +217,7 @@ const Processes = () => {
                                         <span className="font-medium text-slate-700 truncate max-w-[150px]">{proc.parties_info?.executado || "-"}</span>
                                     </div>
                                 </div>
-                                
+
                                 {proc.execution_location && (
                                     <div className="flex items-start gap-2 text-xs text-slate-500 bg-slate-50 p-2 rounded">
                                         <MapPin className="h-3.5 w-3.5 mt-0.5 shrink-0" />
@@ -137,7 +227,7 @@ const Processes = () => {
 
                                 <div className="pt-2 flex items-center justify-between border-t border-slate-100 mt-2">
                                     <span className="text-xs font-medium text-slate-500">
-                                        {proc.item_count || 0} itens vinculados
+                                        {(proc.seized_items || []).length} {(proc.seized_items || []).length === 1 ? 'bem' : 'bens'} registrado{(proc.seized_items || []).length !== 1 ? 's' : ''}
                                     </span>
                                     <div className="text-blue-600 flex items-center text-sm font-medium group-hover:translate-x-1 transition-transform">
                                         Abrir <ArrowRight className="ml-1 h-3 w-3" />
