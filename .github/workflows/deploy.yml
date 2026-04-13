@@ -33,5 +33,20 @@ jobs:
           FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
         run: |
           sudo apt-get install -y lftp
-          lftp -u "u147485162.penhora.app.br,$FTP_PASSWORD" ftp://45.152.44.230 \
-            -e "set ftp:ssl-force true; set ftp:ssl-protect-data true; set ssl:verify-certificate false; set ftp:passive-mode true; set net:timeout 120; set net:max-retries 5; set net:reconnect-interval-base 10; mirror --reverse --delete --no-perms --parallel=5 --verbose ./dist/ public_html/; bye"
+
+          LFTP_SETTINGS="set ftp:ssl-force true; set ftp:ssl-protect-data true; set ssl:verify-certificate false; set ftp:passive-mode true; set net:timeout 120; set net:max-retries 10; set net:reconnect-interval-base 5; set net:reconnect-interval-multiplier 1;"
+          LFTP_MIRROR="mirror --reverse --delete --no-perms --parallel=2 --verbose ./dist/ public_html/; bye"
+
+          for attempt in 1 2 3; do
+            echo ">>> Deploy attempt $attempt/3"
+            if lftp -u "u147485162.penhora.app.br,$FTP_PASSWORD" ftp://45.152.44.230 \
+                 -e "$LFTP_SETTINGS $LFTP_MIRROR"; then
+              echo ">>> Deploy successful on attempt $attempt"
+              exit 0
+            fi
+            echo ">>> Attempt $attempt failed. Waiting 15s before retry..."
+            sleep 15
+          done
+
+          echo ">>> All 3 deploy attempts failed."
+          exit 1
