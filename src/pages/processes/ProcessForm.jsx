@@ -12,6 +12,7 @@ import { Loader2, ArrowLeft, CheckCircle, FileText, Gavel, MapPin } from 'lucide
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { maskCNJ } from '@/lib/cnj';
 
 const PROCESS_PHASES = [
   'Instauração',
@@ -119,7 +120,7 @@ const ProcessForm = () => {
             const depositAddress = parseLocation(data.parties_info?.deposit_location);
 
             setFormData({
-              process_number: data.process_number || '',
+              process_number: maskCNJ(data.process_number || ''),
               exequente: data.parties_info?.exequente || '',
               executado: data.parties_info?.executado || '',
               depositary: data.parties_info?.depositary || '',
@@ -164,7 +165,8 @@ const ProcessForm = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    const normalized = name === 'process_number' ? maskCNJ(value) : value;
+    setFormData(prev => ({ ...prev, [name]: normalized }));
   };
 
   const handleEditorChange = (content) => {
@@ -309,12 +311,14 @@ const ProcessForm = () => {
                 {/* Process Number Manual Entry */}
                 <div>
                      <Label htmlFor="process_number">Número da Penhora (CNJ)</Label> 
-                     <Input 
-                        id="process_number" 
-                        name="process_number" 
-                        value={formData.process_number} 
-                        onChange={handleChange} 
-                        placeholder="0000000-00.0000.0.00.0000" 
+                     <Input
+                        id="process_number"
+                        name="process_number"
+                        value={formData.process_number}
+                        onChange={handleChange}
+                        placeholder="0000000-00.0000.0.00.0000"
+                        inputMode="numeric"
+                        maxLength={25}
                         required
                     />
                 </div>
