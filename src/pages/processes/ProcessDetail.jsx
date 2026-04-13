@@ -193,8 +193,8 @@ const ProcessDetail = () => {
             if (typeof loc === 'string') loc = JSON.parse(loc);
         } catch (_) { return; }
         if (!loc?.logradouro) return;
-        const query = `${loc.logradouro}, ${loc.number || ''}, ${loc.city || ''}, ${loc.state || ''}, Brazil`;
-        fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`, {
+        const query = `${loc.logradouro}, ${loc.number || ''}, ${loc.city || ''}, ${loc.state || ''}, Brasil`;
+        fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&countrycodes=br`, {
             headers: { 'User-Agent': 'PenhoraApp/1.0' }
         })
             .then(r => r.json())
@@ -630,7 +630,20 @@ const ProcessDetail = () => {
                                 <div className="hidden md:block w-px bg-slate-200"></div>
                                 <div className="flex flex-col">
                                     <span className="text-xs text-slate-400 uppercase font-bold">Local do Depósito</span>
-                                    <p className="font-medium text-slate-700">{process.parties_info?.deposit_location ? formatAddress(process.parties_info.deposit_location) : <span className="text-slate-400 italic">Não informado</span>}</p>
+                                    {(() => {
+                                        const raw = process.parties_info?.deposit_location;
+                                        if (!raw) return <span className="text-slate-400 italic text-sm">Não informado</span>;
+                                        const formatted = formatAddress(raw);
+                                        const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(formatted)}`;
+                                        return (
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                                <p className="font-medium text-slate-700 text-sm">{formatted}</p>
+                                                <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline shrink-0">
+                                                    <ExternalLink className="h-3 w-3" /> Ver no mapa
+                                                </a>
+                                            </div>
+                                        );
+                                    })()}
                                 </div>
                             </div>
 
