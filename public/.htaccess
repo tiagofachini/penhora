@@ -9,11 +9,15 @@
 <IfModule mod_headers.c>
   Header set X-Powered-By "Penhora.app.br"
 
-  # Cache everything on CDN by default
-  Header set Cache-Control "public, s-maxage=604800, max-age=0"
-  
-  # Cache in browser all assets
+  # HTML e demais arquivos: nunca servir do cache sem revalidar no servidor.
+  # Garante que todo deploy chegue imediatamente a todos os usuários.
+  # Apache responde 304 (sem corpo) quando o arquivo não mudou — eficiente.
+  Header set Cache-Control "no-cache"
+
+  # Assets com hash de conteúdo (/assets/*): cache de 1 ano, imutável.
+  # Seguro porque o Vite embute o hash do conteúdo no nome do arquivo;
+  # qualquer alteração gera um nome diferente, invalidando o cache naturalmente.
   <If "%{REQUEST_URI} =~ m#^/assets/.*$#">
-    Header set Cache-Control "public, max-age=604800"
+    Header set Cache-Control "public, max-age=31536000, immutable"
   </If>
 </IfModule>
