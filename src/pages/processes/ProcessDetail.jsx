@@ -656,48 +656,6 @@ const ProcessDetail = () => {
                                 </div>
                             )}
 
-                            {/* Fase Atual */}
-                            <div className="mt-4 pt-4 border-t border-slate-100">
-                                <span className="text-xs text-slate-400 uppercase font-bold block mb-1.5">Fase Atual do Processo</span>
-                                {editingPhase ? (
-                                    <div className="flex items-center gap-2 flex-wrap">
-                                        <Select value={phaseValue} onValueChange={setPhaseValue}>
-                                            <SelectTrigger className="h-8 text-sm w-56">
-                                                <SelectValue placeholder="Selecione a fase" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {PROCESS_PHASES.map(phase => (
-                                                    <SelectItem key={phase} value={phase}>{phase}</SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                        <Button size="sm" className="h-8" onClick={handleSavePhase} disabled={savingPhase}>
-                                            {savingPhase ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Salvar'}
-                                        </Button>
-                                        <Button size="sm" variant="ghost" className="h-8" onClick={() => { setEditingPhase(false); setPhaseValue(process.current_phase || ''); }}>
-                                            Cancelar
-                                        </Button>
-                                    </div>
-                                ) : (
-                                    <div className="flex items-center gap-2">
-                                        {process.current_phase ? (
-                                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">
-                                                {process.current_phase}
-                                            </span>
-                                        ) : (
-                                            <span className="text-sm text-slate-400 italic">Não definida</span>
-                                        )}
-                                        <button
-                                            onClick={() => setEditingPhase(true)}
-                                            className="text-slate-400 hover:text-blue-600 transition-colors"
-                                            title="Alterar fase"
-                                        >
-                                            <Edit className="h-3.5 w-3.5" />
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
-
                             {process.summary && (
                                 <div className="mt-6 pt-4 border-t border-slate-100">
                                      <h3 className="text-sm font-semibold text-slate-600 mb-2 flex items-center gap-2"><FileText className="h-4 w-4"/> Resumo / Observações</h3>
@@ -711,19 +669,70 @@ const ProcessDetail = () => {
                                      </div>
                                 </div>
                             )}
+                        </div>
 
-                            {/* Actions */}
-                            <div className="mt-4 pt-4 border-t border-slate-100 flex flex-wrap gap-2">
-                                <Button variant="outline" size="sm" onClick={handleGeneratePDF} disabled={isGeneratingPdf}>
+                        {/* ── Right sidebar: Process actions ── */}
+                        <div className="md:w-52 w-full flex-shrink-0">
+                            <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 flex flex-col gap-2">
+                                <span className="text-xs text-slate-400 uppercase font-bold mb-0.5 flex items-center gap-1.5">
+                                    <Gavel className="h-3.5 w-3.5" /> Ações
+                                </span>
+
+                                <Button size="sm" className="w-full justify-start" onClick={handleGeneratePDF} disabled={isGeneratingPdf}>
                                     {isGeneratingPdf ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Printer className="mr-2 h-4 w-4"/>}
-                                    Gerar Auto de Penhora (PDF)
+                                    Gerar Auto (PDF)
                                 </Button>
-                                <Button variant="outline" size="sm" onClick={() => navigate(`/processes/${id}/edit`)}>
-                                    <Edit className="mr-2 h-4 w-4" /> Editar Processo
-                                </Button>
-                                <Button size="sm" onClick={() => { setCurrentDiligence(null); setIsDiligenceFormOpen(true); }}>
+
+                                <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => { setCurrentDiligence(null); setIsDiligenceFormOpen(true); }}>
                                     <Truck className="mr-2 h-4 w-4" /> Agendar Diligência
                                 </Button>
+
+                                <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => navigate(`/processes/${id}/edit`)}>
+                                    <Edit className="mr-2 h-4 w-4" /> Editar Processo
+                                </Button>
+
+                                <div className="border-t border-slate-200 mt-1 pt-3">
+                                    <span className="text-xs text-slate-400 uppercase font-bold block mb-1.5">Fase Atual</span>
+                                    {editingPhase ? (
+                                        <div className="flex flex-col gap-2">
+                                            <Select value={phaseValue} onValueChange={setPhaseValue}>
+                                                <SelectTrigger className="h-8 text-sm w-full">
+                                                    <SelectValue placeholder="Selecione a fase" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {PROCESS_PHASES.map(phase => (
+                                                        <SelectItem key={phase} value={phase}>{phase}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                            <div className="flex gap-1">
+                                                <Button size="sm" className="h-8 flex-1" onClick={handleSavePhase} disabled={savingPhase}>
+                                                    {savingPhase ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Salvar'}
+                                                </Button>
+                                                <Button size="sm" variant="ghost" className="h-8" onClick={() => { setEditingPhase(false); setPhaseValue(process.current_phase || ''); }}>
+                                                    Cancelar
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                            {process.current_phase ? (
+                                                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">
+                                                    {process.current_phase}
+                                                </span>
+                                            ) : (
+                                                <span className="text-sm text-slate-400 italic">Não definida</span>
+                                            )}
+                                            <button
+                                                onClick={() => setEditingPhase(true)}
+                                                className="text-slate-400 hover:text-blue-600 transition-colors"
+                                                title="Alterar fase"
+                                            >
+                                                <Edit className="h-3.5 w-3.5" />
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     </div>
