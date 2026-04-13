@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Loader2, Check, ChevronsUpDown, Search, Camera, Upload, Trash2, X, Sparkles, AlertTriangle, ScanLine } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { analyzeImage } from '@/lib/visionApi';
+import { fetchProductByEAN } from '@/lib/eanApi';
 import { Html5QrcodeScanner, Html5Qrcode } from "html5-qrcode";
 import { formatAddress } from '@/lib/address';
 import {
@@ -57,6 +58,7 @@ const SeizedItemForm = ({ isOpen, onOpenChange, processId, item, onSuccess, init
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
+  const [lookingUpBarcode, setLookingUpBarcode] = useState(false);
   
   // Image Handling States
   const [imageFile, setImageFile] = useState(null);
@@ -299,13 +301,13 @@ const SeizedItemForm = ({ isOpen, onOpenChange, processId, item, onSuccess, init
 
                      scanner.render((decodedText) => {
                          setFormData(prev => ({...prev, barcode: decodedText}));
-                         toast({ title: "Código lido com sucesso!", description: decodedText, className: "bg-green-50 border-green-200" });
-                         
+
                          if(scannerRef.current) {
                              scannerRef.current.clear().catch(e => console.warn(e));
                              scannerRef.current = null;
                          }
                          setIsScanning(false);
+                         handleBarcodeLookup(decodedText);
                      }, (error) => {
                          // Scanning errors are common while searching, no need to log constantly
                      });
@@ -326,18 +328,75 @@ const SeizedItemForm = ({ isOpen, onOpenChange, processId, item, onSuccess, init
   }, [isScanning, isOpen, toast]);
 
 
-  const runImageAnalysis = async (file) => {
+  const handleBarcodeLookup = async (barcode) => {
+      const code = (barcode || formData.barcode).trim();
+      if (!code) return;
+      setLookingUpBarcode(true);
+      try {
+          const product = await fetchProductByEAN(code);
+          if (product) {
+              setFormData(prev => ({
+                  ...prev,
+                  item_description: product.name || prev.item_description,
+                  characteristics: product.characteristics
+                      ? (prev.characteristics ? prev.characteristics + '\n' + product.characteristics : product.characteristics)
+                      : prev.characteristics,
+              }));
+              toast({ title: "Produto encontrado!", description: product.name, className: "bg-green-50 border-green-200" });
+          }
+      } catch {
+          toast({ variant: "destructive", title: "Produto não encontrado", description: "Nenhum produto localizado para este código." });
+      } finally {
+          setLookingUpBarcode(false);
+      }
+  };
+
+  const detectBarcodeFromImage = async (file) => {
+      if (!('BarcodeDetector' in window)) return null;
+      try {
+          const detector = new BarcodeDetector({
+              formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39', 'qr_code'],
+          });
+          const bitmap = await createImageBitmap(file);
+          const barcodes = await detector.detect(bitmap);
+          return barcodes.length > 0 ? barcodes[0].rawValue : null;
+      } catch {
+          return null;
+      }
+  };
+
+  const runImageAnalysis = async (file, currentBarcode = '') => {
       setAnalyzing(true);
       try {
+          // Try free barcode detection from image before calling AI
+          const detectedBarcode = await detectBarcodeFromImage(file);
+          if (detectedBarcode && !currentBarcode) {
+              setFormData(prev => ({ ...prev, barcode: detectedBarcode }));
+              handleBarcodeLookup(detectedBarcode);
+          }
+
           const result = await analyzeImage(file);
+
+          const modelNote = result.model ? `Modelo: ${result.model}` : '';
+          const aiChars = [modelNote, result.characteristics].filter(Boolean).join('\n');
+
           setFormData(prev => ({
               ...prev,
               item_description: result.description || prev.item_description,
               brand: result.brand || prev.brand,
-              characteristics: result.characteristics ? (prev.characteristics ? prev.characteristics + '\n' + result.characteristics : result.characteristics) : prev.characteristics
+              characteristics: aiChars
+                  ? (prev.characteristics ? prev.characteristics + '\n' + aiChars : aiChars)
+                  : prev.characteristics,
           }));
+
+          // If AI spotted a barcode in the photo and we don't have one yet
+          if (result.barcode && !detectedBarcode && !currentBarcode) {
+              setFormData(prev => ({ ...prev, barcode: result.barcode }));
+              handleBarcodeLookup(result.barcode);
+          }
+
           toast({ title: "Análise concluída", className: "bg-blue-50 border-blue-200" });
-      } catch (error) {
+      } catch {
           toast({ variant: "destructive", title: "Falha na análise automática" });
       } finally {
           setAnalyzing(false);
@@ -355,7 +414,7 @@ const SeizedItemForm = ({ isOpen, onOpenChange, processId, item, onSuccess, init
             setImageFile(file);
             setPreviewUrl(URL.createObjectURL(file));
             setIsCameraOpen(false);
-            runImageAnalysis(file);
+            runImageAnalysis(file, formData.barcode);
         }, 'image/jpeg', 0.8);
     }
   };
@@ -365,7 +424,7 @@ const SeizedItemForm = ({ isOpen, onOpenChange, processId, item, onSuccess, init
         const file = e.target.files[0];
         setImageFile(file);
         setPreviewUrl(URL.createObjectURL(file));
-        runImageAnalysis(file);
+        runImageAnalysis(file, formData.barcode);
     }
   };
 
@@ -606,6 +665,9 @@ const SeizedItemForm = ({ isOpen, onOpenChange, processId, item, onSuccess, init
                         <Input name="barcode" value={formData.barcode} onChange={handleChange} placeholder="Opcional" />
                         <Button type="button" variant="outline" size="icon" onClick={handleStartScanning} title="Escanear Código de Barras">
                             <ScanLine className="h-4 w-4"/>
+                        </Button>
+                        <Button type="button" variant="outline" size="icon" onClick={() => handleBarcodeLookup()} disabled={!formData.barcode || lookingUpBarcode} title="Buscar produto pelo código">
+                            {lookingUpBarcode ? <Loader2 className="h-4 w-4 animate-spin"/> : <Search className="h-4 w-4"/>}
                         </Button>
                     </div>
                 </div>
