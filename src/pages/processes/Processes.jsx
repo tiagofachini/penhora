@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -34,48 +34,80 @@ const Processes = () => {
     const { user } = useAuth();
     const navigate = useNavigate();
     const { toast } = useToast();
+
     const [processes, setProcesses] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [searchTerm, setSearchTerm] = useState('');
+
+    // pendingSearch: what the user is typing; activeSearch: applied on Buscar/Enter
+    const [pendingSearch, setPendingSearch] = useState('');
+    const [activeSearch, setActiveSearch] = useState('');
     const [phaseFilter, setPhaseFilter] = useState('');
 
-    useEffect(() => {
-        fetchProcesses();
-    }, [user]);
-
-    const fetchProcesses = async () => {
+    const fetchProcesses = useCallback(async () => {
+        if (!user) return;
         try {
             setLoading(true);
-            const { data, error } = await supabase
+
+            // 1. Fetch processes
+            const { data: procData, error: procError } = await supabase
                 .from('processes')
-                .select(`
-                    *,
-                    seized_items(item_description, brand, initial_valuation, characteristics),
-                    diligences(description)
-                `)
+                .select('*')
                 .eq('user_id', user.id)
                 .order('created_at', { ascending: false });
+            if (procError) throw procError;
 
-            if (error) throw error;
-            setProcesses(data || []);
+            const procs = procData || [];
+            if (procs.length === 0) { setProcesses([]); return; }
+
+            const ids = procs.map(p => p.id);
+
+            // 2. Fetch seized_items separately (avoids RLS join issues)
+            const { data: itemsData } = await supabase
+                .from('seized_items')
+                .select('process_id, item_description, brand, initial_valuation, characteristics')
+                .in('process_id', ids);
+
+            // 3. Fetch diligences separately
+            const { data: dilsData } = await supabase
+                .from('diligences')
+                .select('process_id, description')
+                .in('process_id', ids);
+
+            // Merge by process_id
+            const itemsMap = {};
+            const dilsMap = {};
+            (itemsData || []).forEach(item => {
+                (itemsMap[item.process_id] ||= []).push(item);
+            });
+            (dilsData || []).forEach(d => {
+                (dilsMap[d.process_id] ||= []).push(d);
+            });
+
+            setProcesses(procs.map(p => ({
+                ...p,
+                seized_items: itemsMap[p.id] || [],
+                diligences: dilsMap[p.id] || [],
+            })));
         } catch (error) {
             console.error('Error fetching processes:', error);
             toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível carregar as penhoras.' });
         } finally {
             setLoading(false);
         }
-    };
+    }, [user, toast]);
+
+    useEffect(() => { fetchProcesses(); }, [fetchProcesses]);
+
+    const applySearch = () => setActiveSearch(pendingSearch.trim());
 
     const filteredProcesses = useMemo(() => {
         return processes.filter(proc => {
-            // Fase filter (exact match)
             if (phaseFilter && proc.current_phase !== phaseFilter) return false;
 
-            // Text search across all fields
-            const term = searchTerm.toLowerCase().trim();
+            const term = activeSearch.toLowerCase();
             if (!term) return true;
 
-            const textFields = [
+            const fields = [
                 proc.process_number,
                 proc.current_phase,
                 proc.parties_info?.exequente,
@@ -83,23 +115,26 @@ const Processes = () => {
                 proc.parties_info?.depositary,
                 formatAddress(proc.execution_location),
                 formatAddress(proc.parties_info?.deposit_location),
-                // Seized items
                 ...(proc.seized_items || []).flatMap(item => [
                     item.item_description,
                     item.brand,
                     item.characteristics,
                     item.initial_valuation != null ? String(item.initial_valuation) : null,
                 ]),
-                // Diligences
                 ...(proc.diligences || []).map(d => d.description),
             ];
 
-            return textFields.some(f => f && f.toLowerCase().includes(term));
+            return fields.some(f => f && f.toLowerCase().includes(term));
         });
-    }, [processes, searchTerm, phaseFilter]);
+    }, [processes, activeSearch, phaseFilter]);
 
-    const hasFilters = searchTerm.trim() !== '' || phaseFilter !== '';
-    const clearFilters = () => { setSearchTerm(''); setPhaseFilter(''); };
+    const hasFilters = activeSearch !== '' || phaseFilter !== '';
+
+    const clearFilters = () => {
+        setPendingSearch('');
+        setActiveSearch('');
+        setPhaseFilter('');
+    };
 
     return (
         <div className="space-y-6">
@@ -123,14 +158,15 @@ const Processes = () => {
                     <Input
                         placeholder="Buscar por processo, partes, endereço, depositário, bem, marca, valor ou diligência…"
                         className="pl-9 bg-white"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
+                        value={pendingSearch}
+                        onChange={(e) => setPendingSearch(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && applySearch()}
                     />
                 </div>
 
-                <div className="flex gap-2">
+                <div className="flex gap-2 shrink-0">
                     <Select value={phaseFilter} onValueChange={setPhaseFilter}>
-                        <SelectTrigger className="w-48 bg-white">
+                        <SelectTrigger className="w-44 bg-white">
                             <SlidersHorizontal className="h-4 w-4 text-slate-400 mr-2 shrink-0" />
                             <SelectValue placeholder="Fase" />
                         </SelectTrigger>
@@ -140,6 +176,10 @@ const Processes = () => {
                             ))}
                         </SelectContent>
                     </Select>
+
+                    <Button onClick={applySearch} className="shrink-0">
+                        <Search className="mr-2 h-4 w-4" /> Buscar
+                    </Button>
 
                     {hasFilters && (
                         <Button variant="outline" size="icon" onClick={clearFilters} title="Limpar filtros" className="shrink-0">
@@ -191,7 +231,7 @@ const Processes = () => {
                                     <div className="bg-blue-100 text-blue-700 p-2 rounded-lg">
                                         <FileText className="h-5 w-5" />
                                     </div>
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-2 flex-wrap justify-end">
                                         {proc.current_phase && (
                                             <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
                                                 {proc.current_phase}
@@ -227,7 +267,9 @@ const Processes = () => {
 
                                 <div className="pt-2 flex items-center justify-between border-t border-slate-100 mt-2">
                                     <span className="text-xs font-medium text-slate-500">
-                                        {(proc.seized_items || []).length} {(proc.seized_items || []).length === 1 ? 'bem' : 'bens'} registrado{(proc.seized_items || []).length !== 1 ? 's' : ''}
+                                        {(proc.seized_items || []).length === 1
+                                            ? '1 bem registrado'
+                                            : `${(proc.seized_items || []).length} bens registrados`}
                                     </span>
                                     <div className="text-blue-600 flex items-center text-sm font-medium group-hover:translate-x-1 transition-transform">
                                         Abrir <ArrowRight className="ml-1 h-3 w-3" />
