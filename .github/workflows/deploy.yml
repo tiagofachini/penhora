@@ -33,17 +33,5 @@ jobs:
           FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
         run: |
           sudo apt-get install -y lftp
-
-          # Configurações globais do lftp (aplicadas antes de abrir a conexão)
-          cat > ~/.lftprc << 'EOF'
-          set ftp:ssl-force true
-          set ftp:ssl-protect-data true
-          set ssl:verify-certificate false
-          set ftp:passive-mode true
-          set net:timeout 60
-          set net:max-retries 5
-          set net:reconnect-interval-base 10
-          EOF
-
           lftp -u "u147485162.penhora.app.br,$FTP_PASSWORD" ftp://45.152.44.230 \
-            -e "mirror --reverse --delete --no-perms --parallel=5 ./dist/ public_html/; bye"
+            -e "set ftp:ssl-force true; set ftp:ssl-protect-data true; set ssl:verify-certificate false; set ftp:passive-mode true; set net:timeout 120; set net:max-retries 5; set net:reconnect-interval-base 10; mirror --reverse --delete --no-perms --parallel=5 --verbose ./dist/ public_html/; bye"
