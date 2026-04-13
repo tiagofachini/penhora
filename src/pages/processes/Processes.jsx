@@ -242,7 +242,7 @@ const Processes = () => {
                                         </span>
                                     </div>
                                 </div>
-                                <h3 className="font-bold text-lg text-slate-900 mt-3 group-hover:text-blue-700 transition-colors">
+                                <h3 className="font-bold text-lg text-slate-900 mt-3 group-hover:text-blue-700 transition-colors break-all">
                                     {proc.process_number || "Sem Número"}
                                 </h3>
                             </CardHeader>
