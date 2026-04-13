@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Loader2, ArrowLeft, CheckCircle, FileText, Gavel, MapPin } from 'lucide-react';
+import { Loader2, ArrowLeft, FileText, Gavel, MapPin, Search } from 'lucide-react';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -243,14 +243,12 @@ const ProcessForm = () => {
         state: formData.deposit_state
     };
 
-    const processData = {
-      user_id: user.id,
+    const baseData = {
       process_number: formData.process_number,
       parties_info: {
         exequente: formData.exequente,
         executado: formData.executado,
         depositary: formData.depositary,
-        // Store deposit location as JSON string now
         deposit_location: JSON.stringify(depositAddressObject),
       },
       execution_date: formData.execution_date || null,
@@ -262,9 +260,9 @@ const ProcessForm = () => {
     try {
       let result;
       if (isEditing) {
-        result = await supabase.from('processes').update(processData).eq('id', id).select().single();
+        result = await supabase.from('processes').update(baseData).eq('id', id).select().single();
       } else {
-        result = await supabase.from('processes').insert(processData).select().single();
+        result = await supabase.from('processes').insert({ user_id: user.id, ...baseData }).select().single();
       }
 
       const { data, error } = result;
@@ -390,26 +388,27 @@ const ProcessForm = () => {
                     <div className="grid md:grid-cols-3 gap-6 mb-4">
                         <div>
                             <Label htmlFor="deposit_cep">CEP</Label>
-                            <div className="relative">
-                                <Input 
-                                    id="deposit_cep" 
-                                    name="deposit_cep" 
-                                    value={formData.deposit_cep} 
-                                    onChange={handleChange} 
-                                    onBlur={(e) => handleCepSearch(e.target.value, true)}
-                                    placeholder="00000-000" 
+                            <div className="flex gap-2">
+                                <Input
+                                    id="deposit_cep"
+                                    name="deposit_cep"
+                                    value={formData.deposit_cep}
+                                    onChange={handleChange}
+                                    placeholder="00000-000"
                                     maxLength={9}
                                 />
-                                {depositCepLoading && (
-                                    <div className="absolute right-3 top-2.5">
-                                        <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
-                                    </div>
-                                )}
-                                {!depositCepLoading && formData.deposit_cep.length >= 8 && (
-                                     <div className="absolute right-3 top-2.5">
-                                        <CheckCircle className="h-4 w-4 text-green-500" />
-                                    </div>
-                                )}
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="icon"
+                                    onClick={() => handleCepSearch(formData.deposit_cep, true)}
+                                    disabled={depositCepLoading}
+                                    title="Buscar CEP"
+                                >
+                                    {depositCepLoading
+                                        ? <Loader2 className="h-4 w-4 animate-spin" />
+                                        : <Search className="h-4 w-4" />}
+                                </Button>
                             </div>
                         </div>
                         <div className="md:col-span-2">
@@ -458,26 +457,27 @@ const ProcessForm = () => {
                         </div>
                          <div>
                             <Label htmlFor="cep">CEP</Label>
-                            <div className="relative">
-                                <Input 
-                                    id="cep" 
-                                    name="cep" 
-                                    value={formData.cep} 
-                                    onChange={handleChange} 
-                                    onBlur={(e) => handleCepSearch(e.target.value, false)}
-                                    placeholder="00000-000" 
+                            <div className="flex gap-2">
+                                <Input
+                                    id="cep"
+                                    name="cep"
+                                    value={formData.cep}
+                                    onChange={handleChange}
+                                    placeholder="00000-000"
                                     maxLength={9}
                                 />
-                                {cepLoading && (
-                                    <div className="absolute right-3 top-2.5">
-                                        <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
-                                    </div>
-                                )}
-                                {!cepLoading && formData.cep.length >= 8 && (
-                                     <div className="absolute right-3 top-2.5">
-                                        <CheckCircle className="h-4 w-4 text-green-500" />
-                                    </div>
-                                )}
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="icon"
+                                    onClick={() => handleCepSearch(formData.cep, false)}
+                                    disabled={cepLoading}
+                                    title="Buscar CEP"
+                                >
+                                    {cepLoading
+                                        ? <Loader2 className="h-4 w-4 animate-spin" />
+                                        : <Search className="h-4 w-4" />}
+                                </Button>
                             </div>
                         </div>
                     </div>
