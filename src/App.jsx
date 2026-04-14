@@ -19,6 +19,7 @@ import DashboardLayout from '@/components/DashboardLayout';
 import Dashboard from '@/pages/Dashboard';
 import MyAccount from '@/pages/MyAccount';
 import MyTeam from '@/pages/MyTeam';
+import People from '@/pages/people/People';
 import ScanBarcodePage from '@/pages/items/ScanBarcodePage';
 import CapturePhotoPage from '@/pages/items/CapturePhotoPage';
 import ManualEntryPage from '@/pages/items/ManualEntryPage';
@@ -68,6 +69,7 @@ const AppContent = () => {
           <Route path="/processes/:id/edit" element={<ProcessForm />} />
           <Route path="/account" element={<MyAccount />} />
           <Route path="/team" element={<MyTeam />} />
+          <Route path="/people" element={<People />} />
           <Route path="/audit" element={<AuditPage />} />
           
           <Route path="/items/scan-barcode" element={<ScanBarcodePage />} />

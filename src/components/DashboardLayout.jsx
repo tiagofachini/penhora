@@ -27,7 +27,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 const navItems = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { href: '/processes', icon: FileText, label: 'Penhoras' },
-  { href: '/calendar', icon: Calendar, label: 'Agenda' }, 
+  { href: '/people', icon: Users, label: 'Pessoas' },
+  { href: '/calendar', icon: Calendar, label: 'Agenda' },
 ];
 
 const logoSrc = "https://horizons-cdn.hostinger.com/d89750d7-1f5d-466f-8dd9-087252acee70/2d8010627a52ee48131ebed25f5ffc09.png"; // Updated logo source
