@@ -13,6 +13,7 @@ import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { maskCNJ } from '@/lib/cnj';
+import { maskCPF } from '@/lib/cpf';
 
 const PROCESS_PHASES = [
   'Instauração',
@@ -34,8 +35,11 @@ const ProcessForm = () => {
   const [formData, setFormData] = useState({
     process_number: '',
     exequente: '',
+    exequente_cpf: '',
     executado: '',
+    executado_cpf: '',
     depositary: '',
+    depositary_cpf: '',
     // Deposit Location structured fields
     deposit_cep: '',
     deposit_logradouro: '',
@@ -122,8 +126,11 @@ const ProcessForm = () => {
             setFormData({
               process_number: maskCNJ(data.process_number || ''),
               exequente: data.parties_info?.exequente || '',
+              exequente_cpf: maskCPF(data.parties_info?.exequente_cpf || ''),
               executado: data.parties_info?.executado || '',
+              executado_cpf: maskCPF(data.parties_info?.executado_cpf || ''),
               depositary: data.parties_info?.depositary || '',
+              depositary_cpf: maskCPF(data.parties_info?.depositary_cpf || ''),
               
               // Deposit Address
               deposit_cep: depositAddress.cep || '',
@@ -165,7 +172,9 @@ const ProcessForm = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    const normalized = name === 'process_number' ? maskCNJ(value) : value;
+    let normalized = value;
+    if (name === 'process_number') normalized = maskCNJ(value);
+    else if (name.endsWith('_cpf')) normalized = maskCPF(value);
     setFormData(prev => ({ ...prev, [name]: normalized }));
   };
 
@@ -247,8 +256,11 @@ const ProcessForm = () => {
       process_number: formData.process_number,
       parties_info: {
         exequente: formData.exequente,
+        exequente_cpf: formData.exequente_cpf || null,
         executado: formData.executado,
+        executado_cpf: formData.executado_cpf || null,
         depositary: formData.depositary,
+        depositary_cpf: formData.depositary_cpf || null,
         deposit_location: JSON.stringify(depositAddressObject),
       },
       execution_date: formData.execution_date || null,
@@ -322,26 +334,54 @@ const ProcessForm = () => {
                 </div>
 
                 {/* Parties Info */}
-                 <div className="grid md:grid-cols-2 gap-6">
-                    <div>
-                        <Label htmlFor="exequente">Exequente (Autor)</Label>
-                        <Input 
-                            id="exequente" 
-                            name="exequente" 
-                            value={formData.exequente} 
-                            onChange={handleChange} 
-                            placeholder="Nome do credor" 
-                        />
+                <div className="grid md:grid-cols-2 gap-6">
+                    <div className="space-y-3">
+                        <div>
+                            <Label htmlFor="exequente">Exequente (Autor)</Label>
+                            <Input
+                                id="exequente"
+                                name="exequente"
+                                value={formData.exequente}
+                                onChange={handleChange}
+                                placeholder="Nome do credor"
+                            />
+                        </div>
+                        <div>
+                            <Label htmlFor="exequente_cpf">CPF do Exequente <span className="text-slate-400 font-normal">(opcional)</span></Label>
+                            <Input
+                                id="exequente_cpf"
+                                name="exequente_cpf"
+                                value={formData.exequente_cpf}
+                                onChange={handleChange}
+                                placeholder="000.000.000-00"
+                                inputMode="numeric"
+                                maxLength={14}
+                            />
+                        </div>
                     </div>
-                    <div>
-                        <Label htmlFor="executado">Executado (Réu)</Label>
-                        <Input 
-                            id="executado" 
-                            name="executado" 
-                            value={formData.executado} 
-                            onChange={handleChange} 
-                            placeholder="Nome do devedor" 
-                        />
+                    <div className="space-y-3">
+                        <div>
+                            <Label htmlFor="executado">Executado (Réu)</Label>
+                            <Input
+                                id="executado"
+                                name="executado"
+                                value={formData.executado}
+                                onChange={handleChange}
+                                placeholder="Nome do devedor"
+                            />
+                        </div>
+                        <div>
+                            <Label htmlFor="executado_cpf">CPF do Executado <span className="text-slate-400 font-normal">(opcional)</span></Label>
+                            <Input
+                                id="executado_cpf"
+                                name="executado_cpf"
+                                value={formData.executado_cpf}
+                                onChange={handleChange}
+                                placeholder="000.000.000-00"
+                                inputMode="numeric"
+                                maxLength={14}
+                            />
+                        </div>
                     </div>
                 </div>
 
@@ -369,15 +409,29 @@ const ProcessForm = () => {
                         <Gavel className="h-4 w-4" /> Dados do Auto
                     </h3>
                     
-                    <div className="mb-6">
-                        <Label htmlFor="depositary">Nome do Depositário</Label>
-                        <Input 
-                            id="depositary" 
-                            name="depositary" 
-                            value={formData.depositary} 
-                            onChange={handleChange} 
-                            placeholder="Responsável pelos bens" 
-                        />
+                    <div className="grid md:grid-cols-2 gap-4 mb-6">
+                        <div>
+                            <Label htmlFor="depositary">Nome do Depositário</Label>
+                            <Input
+                                id="depositary"
+                                name="depositary"
+                                value={formData.depositary}
+                                onChange={handleChange}
+                                placeholder="Responsável pelos bens"
+                            />
+                        </div>
+                        <div>
+                            <Label htmlFor="depositary_cpf">CPF do Depositário <span className="text-slate-400 font-normal">(opcional)</span></Label>
+                            <Input
+                                id="depositary_cpf"
+                                name="depositary_cpf"
+                                value={formData.depositary_cpf}
+                                onChange={handleChange}
+                                placeholder="000.000.000-00"
+                                inputMode="numeric"
+                                maxLength={14}
+                            />
+                        </div>
                     </div>
 
                     <h4 className="text-sm font-medium text-slate-700 mb-3 flex items-center gap-2">

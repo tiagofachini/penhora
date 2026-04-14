@@ -6,10 +6,11 @@ import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { 
-    FileText, Calendar, MapPin, Users, Plus, Trash2, Edit, Scale, 
+import {
+    FileText, Calendar, MapPin, Users, Plus, Trash2, Edit, Scale,
     Loader2, Box, Truck, Clock, AlertTriangle, ArrowLeft, Printer,
-    CheckCircle2, XCircle, MoreVertical, Gavel, ExternalLink
+    CheckCircle2, XCircle, MoreVertical, Gavel, ExternalLink,
+    Search, Copy, Check
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
@@ -143,8 +144,25 @@ const ProcessDetail = () => {
     // Deposit location map
     const [depositMapCoordinates, setDepositMapCoordinates] = useState(null);
 
+    // Asset search modal
+    const [assetSearchOpen, setAssetSearchOpen] = useState(false);
+    const [assetSearchTarget, setAssetSearchTarget] = useState(null); // { name, cpf }
+    const [copiedCpf, setCopiedCpf] = useState(false);
+
     const formatCurrency = (value) => {
         return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0);
+    };
+
+    const openAssetSearch = (name, cpf) => {
+        setAssetSearchTarget({ name, cpf });
+        setCopiedCpf(false);
+        setAssetSearchOpen(true);
+    };
+
+    const copyCpf = (cpf) => {
+        navigator.clipboard.writeText(cpf).catch(() => {});
+        setCopiedCpf(true);
+        setTimeout(() => setCopiedCpf(false), 2000);
     };
 
     const fetchProcessDetails = useCallback(async () => {
@@ -624,16 +642,34 @@ const ProcessDetail = () => {
                                 <div className="flex flex-col">
                                     <span className="text-slate-400 font-medium uppercase text-xs tracking-wider">Exequente</span>
                                     <span className="font-semibold text-slate-700 text-lg">{process.parties_info?.exequente || '-'}</span>
+                                    {process.parties_info?.exequente_cpf && (
+                                        <span className="text-xs text-slate-400 font-mono mt-0.5">{process.parties_info.exequente_cpf}</span>
+                                    )}
                                 </div>
                                 <div className="hidden md:block w-px bg-slate-200"></div>
                                 <div className="flex flex-col">
                                     <span className="text-slate-400 font-medium uppercase text-xs tracking-wider">Executado</span>
                                     <span className="font-semibold text-slate-700 text-lg">{process.parties_info?.executado || '-'}</span>
+                                    {process.parties_info?.executado_cpf && (
+                                        <div className="flex items-center gap-2 mt-0.5">
+                                            <span className="text-xs text-slate-400 font-mono">{process.parties_info.executado_cpf}</span>
+                                            <button
+                                                onClick={() => openAssetSearch(process.parties_info.executado, process.parties_info.executado_cpf)}
+                                                className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 font-medium bg-blue-50 hover:bg-blue-100 px-1.5 py-0.5 rounded transition-colors"
+                                                title="Buscar bens do executado"
+                                            >
+                                                <Search className="h-3 w-3" /> Buscar Bens
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
                                 <div className="hidden md:block w-px bg-slate-200"></div>
                                 <div className="flex flex-col">
                                     <span className="text-xs text-slate-400 uppercase font-bold">Depositário</span>
                                     <p className="font-medium text-slate-700 truncate">{process.parties_info?.depositary || <span className="text-slate-400 italic">Não informado</span>}</p>
+                                    {process.parties_info?.depositary_cpf && (
+                                        <span className="text-xs text-slate-400 font-mono mt-0.5">{process.parties_info.depositary_cpf}</span>
+                                    )}
                                 </div>
                                 <div className="hidden md:block w-px bg-slate-200"></div>
                                 <div className="flex flex-col">
@@ -1152,6 +1188,81 @@ const ProcessDetail = () => {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            {/* Asset Search Dialog */}
+            <Dialog open={assetSearchOpen} onOpenChange={setAssetSearchOpen}>
+                <DialogContent className="sm:max-w-[480px] bg-white">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <Search className="h-5 w-5 text-blue-600" />
+                            Buscar Bens Penhoráveis
+                        </DialogTitle>
+                    </DialogHeader>
+                    {assetSearchTarget && (
+                        <div className="space-y-4 pt-1">
+                            <div className="bg-slate-50 rounded-lg p-3 border">
+                                <p className="text-xs text-slate-400 uppercase font-semibold mb-1">Executado</p>
+                                <p className="font-semibold text-slate-800">{assetSearchTarget.name}</p>
+                                <div className="flex items-center gap-2 mt-1">
+                                    <span className="font-mono text-sm text-slate-600">{assetSearchTarget.cpf}</span>
+                                    <button
+                                        onClick={() => copyCpf(assetSearchTarget.cpf)}
+                                        className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-2 py-0.5 rounded transition-colors"
+                                    >
+                                        {copiedCpf ? <><Check className="h-3 w-3" /> Copiado!</> : <><Copy className="h-3 w-3" /> Copiar CPF</>}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <p className="text-sm text-slate-500">
+                                Não há API pública gratuita para busca de bens por CPF no Brasil.
+                                Use os portais abaixo para pesquisa manual — copie o CPF acima e cole no portal desejado.
+                            </p>
+
+                            <div className="space-y-2">
+                                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Portais de Consulta</p>
+
+                                <a href={`https://www.jusbrasil.com.br/busca?q=${encodeURIComponent(assetSearchTarget.name)}`}
+                                   target="_blank" rel="noopener noreferrer"
+                                   className="flex items-center justify-between p-3 rounded-lg border hover:border-blue-300 hover:bg-blue-50 transition-colors group">
+                                    <div>
+                                        <p className="font-medium text-slate-700 group-hover:text-blue-700 text-sm">Jusbrasil</p>
+                                        <p className="text-xs text-slate-400">Processos e histórico jurídico</p>
+                                    </div>
+                                    <ExternalLink className="h-4 w-4 text-slate-400 group-hover:text-blue-600" />
+                                </a>
+
+                                <a href="https://consultasituacao.det.intra.serpro.gov.br/"
+                                   target="_blank" rel="noopener noreferrer"
+                                   className="flex items-center justify-between p-3 rounded-lg border hover:border-blue-300 hover:bg-blue-50 transition-colors group">
+                                    <div>
+                                        <p className="font-medium text-slate-700 group-hover:text-blue-700 text-sm">DETRAN (SERPRO)</p>
+                                        <p className="text-xs text-slate-400">Consulta de veículos por CPF</p>
+                                    </div>
+                                    <ExternalLink className="h-4 w-4 text-slate-400 group-hover:text-blue-600" />
+                                </a>
+
+                                <a href="https://www.cnj.jus.br/sistemas/processo-judicial-eletronico-pje/"
+                                   target="_blank" rel="noopener noreferrer"
+                                   className="flex items-center justify-between p-3 rounded-lg border hover:border-blue-300 hover:bg-blue-50 transition-colors group">
+                                    <div>
+                                        <p className="font-medium text-slate-700 group-hover:text-blue-700 text-sm">PJe / CNJ</p>
+                                        <p className="text-xs text-slate-400">Processos judiciais eletrônicos</p>
+                                    </div>
+                                    <ExternalLink className="h-4 w-4 text-slate-400 group-hover:text-blue-600" />
+                                </a>
+
+                                <div className="p-3 rounded-lg border border-amber-200 bg-amber-50">
+                                    <p className="text-xs font-semibold text-amber-700 mb-1">Sistemas exclusivos do Judiciário</p>
+                                    <p className="text-xs text-amber-600">
+                                        SISBAJUD (contas bancárias), RENAJUD (veículos) e INFOJUD (IR/patrimônio) são acessíveis apenas pelo sistema do tribunal, mediante ordem judicial.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </DialogContent>
+            </Dialog>
         </>
     );
 };
