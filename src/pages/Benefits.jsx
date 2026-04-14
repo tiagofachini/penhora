@@ -485,14 +485,11 @@ const Benefits = () => {
               Comece a economizar tempo hoje
             </h2>
             <p className="text-xl mb-10 text-slate-300 max-w-2xl mx-auto leading-relaxed">
-              Junte-se a profissionais que já modernizaram suas rotinas com o Penhora.app. Teste grátis e comprove.
+              Junte-se a profissionais que já modernizaram suas rotinas com o Penhora.app. Acesso gratuito e ilimitado.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Button size="lg" className="h-14 px-8 text-lg bg-blue-600 hover:bg-blue-500 shadow-lg shadow-blue-900/50">
-                    <Link to="/signup">Criar Conta Grátis</Link>
-                </Button>
-                <Button asChild size="lg" variant="outline" className="h-14 px-8 text-lg bg-slate-100 text-slate-900 hover:bg-white hover:text-slate-900 border-transparent">
-                    <Link to="/plans">Ver Planos</Link>
+                    <Link to="/signup">Criar Conta Gratuitamente</Link>
                 </Button>
             </div>
           </motion.div>
