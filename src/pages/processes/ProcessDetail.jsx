@@ -121,7 +121,6 @@ const ProcessDetail = () => {
     const [diligences, setDiligences] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
-    const [checkingLimits, setCheckingLimits] = useState(false);
     
     // Modals
     const [isItemFormOpen, setIsItemFormOpen] = useState(false);
@@ -250,54 +249,11 @@ const ProcessDetail = () => {
         }
     };
 
-    // Check Limit before opening item form
-    const handleOpenItemForm = async (mode, dilId = null) => {
-        setCheckingLimits(true);
-        try {
-            // 1. Get User Limits
-            const { data: sub } = await supabase
-                .from('subscriptions')
-                .select('item_limit, status')
-                .eq('user_id', user.id)
-                .order('created_at', { ascending: false })
-                .limit(1)
-                .maybeSingle();
-            
-            const limit = sub?.status === 'active' || sub?.status === 'trialing' ? (sub.item_limit ?? 100) : 100;
-
-            // 2. Get Current Items Count (Total for User)
-            const { count } = await supabase
-                .from('seized_items')
-                .select('*, processes!inner(user_id)', { count: 'exact', head: true })
-                .eq('processes.user_id', user.id);
-
-            // 3. Check
-            if (count >= limit) {
-                 toast({
-                    variant: 'destructive',
-                    title: "Limite de Itens Atingido",
-                    description: `Você atingiu o limite de ${limit} itens do seu plano. Faça um upgrade na página Meu Plano.`,
-                    action: <Button variant="outline" size="sm" onClick={() => navigate('/my-plan')} className="bg-white text-black border-slate-300">Meu Plano</Button>
-                });
-                return;
-            }
-
-            // Proceed
-            setCurrentItem(null);
-            setItemFormMode(mode);
-            setSelectedDiligenceId(dilId);
-            setIsItemFormOpen(true);
-
-        } catch (error) {
-             console.error("Limit check error", error);
-             // Allow proceed on error to be safe/lenient
-             setCurrentItem(null);
-             setItemFormMode(mode);
-             setSelectedDiligenceId(dilId);
-             setIsItemFormOpen(true);
-        } finally {
-            setCheckingLimits(false);
-        }
+    const handleOpenItemForm = (mode, dilId = null) => {
+        setCurrentItem(null);
+        setItemFormMode(mode);
+        setSelectedDiligenceId(dilId);
+        setIsItemFormOpen(true);
     };
 
     // Computed Info: Calculate Next Diligence
@@ -986,9 +942,8 @@ const ProcessDetail = () => {
                                                     variant="secondary"
                                                     className="h-7 text-xs bg-yellow-400 hover:bg-yellow-500 text-slate-900 flex-shrink-0"
                                                     onClick={() => handleOpenItemForm('manual', dil.id)}
-                                                    disabled={checkingLimits}
                                                 >
-                                                    {checkingLimits ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Plus className="h-3 w-3 mr-1" />}
+                                                    <Plus className="h-3 w-3 mr-1" />
                                                     Adicionar Bem
                                                 </Button>
                                             </div>

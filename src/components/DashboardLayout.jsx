@@ -14,7 +14,6 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import {
   LayoutDashboard,
   FileText,
-  CreditCard,
   ChevronDown,
   LogOut,
   PanelLeft,
@@ -110,13 +109,6 @@ const UserMenu = () => {
                     </Link>
                 </DropdownMenuItem>
 
-                <DropdownMenuItem asChild>
-                    <Link to="/my-plan" className="w-full cursor-pointer flex items-center">
-                        <CreditCard className="mr-2 h-4 w-4" />
-                        <span>Meu Plano</span>
-                    </Link>
-                </DropdownMenuItem>
-                
                 {isAdmin && (
                   <>
                     <DropdownMenuSeparator />
