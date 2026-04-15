@@ -212,6 +212,12 @@ const addTransformIndexHtml = {
 	name: 'add-transform-index-html',
 	transformIndexHtml(html) {
 		const tags = [
+			// Build timestamp — forces proxy/CDN to treat each deploy as a new document
+			...(!isDev ? [{
+				tag: 'meta',
+				attrs: { name: 'build-timestamp', content: new Date().toISOString() },
+				injectTo: 'head',
+			}] : []),
 			{
 				tag: 'script',
 				attrs: { type: 'module' },

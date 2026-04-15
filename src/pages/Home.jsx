@@ -91,9 +91,10 @@ const Home = () => {
                                     </Link>
                                 </Button>
                             </div>
-                            <div className="mt-10 flex items-center justify-center lg:justify-start gap-8 text-sm text-muted-foreground font-medium">
+                            <div className="mt-10 flex flex-wrap items-center justify-center lg:justify-start gap-6 text-sm text-muted-foreground font-medium">
                                 <div className="flex items-center"><CheckCircle2 className="h-4 w-4 text-secondary mr-2" /> Conformidade CPC</div>
                                 <div className="flex items-center"><CheckCircle2 className="h-4 w-4 text-secondary mr-2" /> Autos em PDF</div>
+                                <div className="flex items-center"><CheckCircle2 className="h-4 w-4 text-green-500 mr-2" /> Gratuito e ilimitado</div>
                             </div>
                         </motion.div>
                     </div>
