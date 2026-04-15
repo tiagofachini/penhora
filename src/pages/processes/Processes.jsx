@@ -16,8 +16,18 @@ import {
 } from '@/components/ui/select';
 import {
   Plus, Search, FileText, MapPin,
-  ArrowRight, X, SlidersHorizontal,
+  ArrowRight, X, SlidersHorizontal, Trash2,
 } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { formatAddress } from '@/lib/address';
 
 const PROCESS_PHASES = [
@@ -37,6 +47,7 @@ const Processes = () => {
 
     const [processes, setProcesses] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [deleteTarget, setDeleteTarget] = useState(null);
 
     // pendingSearch: what the user is typing; activeSearch: applied on Buscar/Enter
     const [pendingSearch, setPendingSearch] = useState('');
@@ -134,6 +145,23 @@ const Processes = () => {
         setPendingSearch('');
         setActiveSearch('');
         setPhaseFilter('');
+    };
+
+    const handleDelete = async () => {
+        if (!deleteTarget) return;
+        const pid = deleteTarget.id;
+        try {
+            await supabase.from('seized_items').delete().eq('process_id', pid);
+            await supabase.from('diligences').delete().eq('process_id', pid);
+            const { error } = await supabase.from('processes').delete().eq('id', pid);
+            if (error) throw error;
+            toast({ title: 'Penhora excluída.' });
+            fetchProcesses();
+        } catch (err) {
+            toast({ variant: 'destructive', title: 'Erro ao excluir', description: err.message });
+        } finally {
+            setDeleteTarget(null);
+        }
     };
 
     return (
@@ -240,6 +268,14 @@ const Processes = () => {
                                         <span className="text-xs font-mono text-slate-400 bg-white px-2 py-1 rounded border">
                                             {new Date(proc.created_at).toLocaleDateString()}
                                         </span>
+                                        <Button
+                                            variant="ghost" size="icon"
+                                            className="h-7 w-7 text-slate-300 hover:text-red-600 hover:bg-red-50"
+                                            title="Excluir penhora"
+                                            onClick={e => { e.stopPropagation(); setDeleteTarget(proc); }}
+                                        >
+                                            <Trash2 className="h-4 w-4" />
+                                        </Button>
                                     </div>
                                 </div>
                                 <h3 className="font-bold text-lg text-slate-900 mt-3 group-hover:text-blue-700 transition-colors break-all">
@@ -280,6 +316,23 @@ const Processes = () => {
                     ))}
                 </div>
             )}
+            {/* Delete confirmation */}
+            <AlertDialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Excluir penhora?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            A penhora <strong>{deleteTarget?.process_number || 'sem número'}</strong> e todos os seus bens e registros serão excluídos permanentemente. Esta ação não pode ser desfeita.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">
+                            Excluir
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 };
