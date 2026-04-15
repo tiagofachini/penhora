@@ -221,10 +221,14 @@ const addTransformIndexHtml = {
 	transformIndexHtml(html) {
 		const bv = !isDev ? getBuildVersion() : null;
 		const tags = [
-			// Build version: meta fingerprint + inline var + cache-bust check script.
-			// If the browser/proxy serves a stale index.html, this script detects the
-			// mismatch against /version.json (always fetched fresh) and redirects to
-			// a URL with a unique query param, which forces the proxy to fetch origin.
+			// Build version: meta fingerprint + inline var + cache-bust logic.
+			// Strategy:
+			//   1. Asset 404 recovery — if any JS/CSS fails to load (old index.html
+			//      pointing to deleted assets), force a hard reload via unique URL.
+			//   2. Version check — after 2s idle (no user interaction), fetches
+			//      /version.json. On mismatch shows an unobtrusive banner instead of
+			//      a forced redirect, which could interrupt in-progress actions like
+			//      logout. User clicks "Atualizar" to get the new version.
 			...(bv ? [
 				{
 					tag: 'meta',
@@ -238,10 +242,50 @@ const addTransformIndexHtml = {
 				},
 				{
 					tag: 'script',
-					// Fetches /version.json with no-store. If server version differs from
-					// the version baked into this HTML and we haven't already redirected
-					// (no _r= param), replaces URL with a cache-busting query string.
-					children: `(function(){fetch('/version.json?_t='+Date.now(),{cache:'no-store'}).then(function(r){return r.json()}).then(function(d){if(d&&d.v&&d.v!==window.__BV__&&window.location.search.indexOf('_r=')===-1){window.location.replace(window.location.pathname+'?_r='+d.v+(window.location.hash||''))}}).catch(function(){})})();`,
+					children: `
+(function(){
+  // 1. Asset 404 recovery: old index.html + new deploy = missing JS/CSS → blank page.
+  //    Detect failed asset loads and force a fresh navigation.
+  window.addEventListener('error',function(e){
+    var t=e.target;
+    if(t&&(t.tagName==='SCRIPT'||t.tagName==='LINK')&&(t.src||t.href)){
+      if(!window.__assetErr){
+        window.__assetErr=1;
+        window.location.replace(window.location.pathname+'?_reload='+Date.now());
+      }
+    }
+  },true);
+
+  // 2. Version check: wait 2s, skip if user already interacted.
+  var _ui=false;
+  document.addEventListener('click',function(){_ui=true;},{once:true,capture:true});
+  document.addEventListener('keydown',function(){_ui=true;},{once:true,capture:true});
+
+  setTimeout(function(){
+    if(_ui)return;
+    fetch('/version.json?_t='+Date.now(),{cache:'no-store'})
+      .then(function(r){return r.json()})
+      .then(function(d){
+        if(!d||!d.v||d.v===window.__BV__)return;
+        var nv=d.v;
+        // Show update banner — user decides when to refresh
+        var show=function(){
+          if(!document.body||document.getElementById('__vup'))return;
+          var b=document.createElement('div');
+          b.id='__vup';
+          b.style.cssText='position:fixed;bottom:0;left:0;right:0;background:#1d4ed8;color:#fff;text-align:center;padding:10px 16px;z-index:99999;font-family:sans-serif;font-size:14px;display:flex;align-items:center;justify-content:center;gap:12px;';
+          b.innerHTML='Nova vers\\u00e3o dispon\\u00edvel. <button id="__vup_btn" style="background:#fff;color:#1d4ed8;border:none;padding:4px 14px;border-radius:4px;cursor:pointer;font-weight:600;">Atualizar</button>';
+          document.body.appendChild(b);
+          document.getElementById('__vup_btn').onclick=function(){
+            window.location.replace(window.location.pathname+'?_r='+nv+(window.location.hash||''));
+          };
+        };
+        if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',show);}
+        else{show();}
+      })
+      .catch(function(){});
+  },2000);
+})();`,
 					injectTo: 'head',
 				},
 			] : []),

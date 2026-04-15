@@ -65,8 +65,13 @@ const UserMenu = () => {
     const navigate = useNavigate();
 
     const handleSignOut = async () => {
-        await signOut();
-        navigate('/'); // Redirect to home page after logout
+        try {
+            await signOut();
+        } catch (err) {
+            console.error('Logout error:', err);
+        } finally {
+            navigate('/');
+        }
     };
 
     const userInitial = user?.user_metadata?.name?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || 'U';

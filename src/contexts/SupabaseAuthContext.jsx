@@ -165,9 +165,14 @@ export const AuthProvider = ({ children }) => {
 
   const signOut = useCallback(async () => {
     try {
-        await logActivity(supabase, 'Logout');
-    } catch(e) { console.error("Logout log failed", e); }
-    
+        // Time-boxed log — never block signout for more than 3 seconds.
+        // The ipify.org IP lookup inside logActivity can be slow or hang.
+        await Promise.race([
+            logActivity(supabase, 'Logout'),
+            new Promise(resolve => setTimeout(resolve, 3000))
+        ]);
+    } catch(e) {}
+
     const { error } = await supabase.auth.signOut();
     return { error };
   }, []);
