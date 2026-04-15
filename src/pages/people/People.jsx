@@ -72,10 +72,13 @@ const PersonDialog = ({ open, onOpenChange, person, onSaved }) => {
         const { name, value } = e.target;
         const normalized = name === 'cpf' ? maskCPF(value) : value;
         setForm(prev => ({ ...prev, [name]: normalized }));
+        if (name === 'cep' && normalized.replace(/\D/g, '').length === 8) {
+            handleCepSearch(normalized);
+        }
     };
 
-    const handleCepSearch = async () => {
-        const cep = form.cep.replace(/\D/g, '');
+    const handleCepSearch = async (cepValue) => {
+        const cep = (cepValue ?? form.cep).replace(/\D/g, '');
         if (cep.length !== 8) return;
         setCepLoading(true);
         try {
@@ -188,17 +191,12 @@ const PersonDialog = ({ open, onOpenChange, person, onSaved }) => {
                         <div className="grid grid-cols-3 gap-3 mb-3">
                             <div>
                                 <Label htmlFor="p_cep">CEP</Label>
-                                <div className="flex gap-2">
+                                <div className="relative">
                                     <Input
                                         id="p_cep" name="cep" value={form.cep}
                                         onChange={handleChange} placeholder="00000-000" maxLength={9}
                                     />
-                                    <Button type="button" variant="outline" size="icon"
-                                        onClick={handleCepSearch} disabled={cepLoading} title="Buscar CEP">
-                                        {cepLoading
-                                            ? <Loader2 className="h-4 w-4 animate-spin" />
-                                            : <Search className="h-4 w-4" />}
-                                    </Button>
+                                    {cepLoading && <Loader2 className="absolute right-3 top-2.5 h-4 w-4 animate-spin text-slate-400 pointer-events-none" />}
                                 </div>
                             </div>
                             <div className="col-span-2">

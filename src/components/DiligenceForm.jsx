@@ -82,6 +82,9 @@ const DiligenceForm = ({ processId, diligence, onSuccess, onCancel }) => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+    if (name === 'cep' && value.replace(/\D/g, '').length === 8) {
+      handleCepBlur({ target: { value } });
+    }
   };
 
   const handleSelectChange = (value) => {
@@ -227,8 +230,8 @@ const DiligenceForm = ({ processId, diligence, onSuccess, onCancel }) => {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="relative">
                 <Label htmlFor="cep">CEP</Label>
-                <Input 
-                    id="cep" name="cep" value={formData.cep} onChange={handleChange} onBlur={handleCepBlur} placeholder="00000-000" maxLength={9} 
+                <Input
+                    id="cep" name="cep" value={formData.cep} onChange={handleChange} placeholder="00000-000" maxLength={9}
                 />
                 {cepLoading && <Loader2 className="absolute right-3 top-8 h-4 w-4 animate-spin text-slate-400" />}
             </div>

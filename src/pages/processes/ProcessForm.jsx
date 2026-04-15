@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Loader2, ArrowLeft, FileText, Gavel, MapPin, Search } from 'lucide-react';
+import { Loader2, ArrowLeft, FileText, Gavel, MapPin } from 'lucide-react';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -159,6 +159,9 @@ const ProcessForm = () => {
     const { name, value } = e.target;
     const normalized = name === 'process_number' ? maskCNJ(value) : value;
     setFormData(prev => ({ ...prev, [name]: normalized }));
+    if ((name === 'cep' || name === 'deposit_cep') && normalized.replace(/\D/g, '').length === 8) {
+      handleCepSearch(normalized, name === 'deposit_cep');
+    }
   };
 
   // PersonCombobox selection handler — one per party
@@ -408,19 +411,13 @@ const ProcessForm = () => {
                 <div className="grid md:grid-cols-3 gap-6 mb-4">
                   <div>
                     <Label htmlFor="deposit_cep">CEP</Label>
-                    <div className="flex gap-2">
+                    <div className="relative">
                       <Input
                         id="deposit_cep" name="deposit_cep"
                         value={formData.deposit_cep} onChange={handleChange}
                         placeholder="00000-000" maxLength={9}
                       />
-                      <Button type="button" variant="outline" size="icon"
-                        onClick={() => handleCepSearch(formData.deposit_cep, true)}
-                        disabled={depositCepLoading} title="Buscar CEP">
-                        {depositCepLoading
-                          ? <Loader2 className="h-4 w-4 animate-spin" />
-                          : <Search className="h-4 w-4" />}
-                      </Button>
+                      {depositCepLoading && <Loader2 className="absolute right-3 top-2.5 h-4 w-4 animate-spin text-slate-400 pointer-events-none" />}
                     </div>
                   </div>
                   <div className="md:col-span-2">
@@ -479,16 +476,10 @@ const ProcessForm = () => {
                   </div>
                   <div>
                     <Label htmlFor="cep">CEP</Label>
-                    <div className="flex gap-2">
+                    <div className="relative">
                       <Input id="cep" name="cep" value={formData.cep}
                         onChange={handleChange} placeholder="00000-000" maxLength={9} />
-                      <Button type="button" variant="outline" size="icon"
-                        onClick={() => handleCepSearch(formData.cep, false)}
-                        disabled={cepLoading} title="Buscar CEP">
-                        {cepLoading
-                          ? <Loader2 className="h-4 w-4 animate-spin" />
-                          : <Search className="h-4 w-4" />}
-                      </Button>
+                      {cepLoading && <Loader2 className="absolute right-3 top-2.5 h-4 w-4 animate-spin text-slate-400 pointer-events-none" />}
                     </div>
                   </div>
                 </div>
