@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Helmet } from 'react-helmet-async';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { useToast } from '@/components/ui/use-toast';
@@ -18,7 +19,7 @@ import {
     Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import {
-    Plus, Search, Edit, Trash2, Loader2, Users, MapPin, X, SlidersHorizontal,
+    Plus, Search, Edit, Trash2, Loader2, Users, MapPin, X, SlidersHorizontal, FileText,
 } from 'lucide-react';
 import { maskCPF } from '@/lib/cpf';
 import { formatAddress } from '@/lib/address';
@@ -250,6 +251,7 @@ const PersonDialog = ({ open, onOpenChange, person, onSaved }) => {
 const People = () => {
     const { user } = useAuth();
     const { toast } = useToast();
+    const navigate = useNavigate();
 
     const [people, setPeople] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -266,13 +268,26 @@ const People = () => {
         if (!user) return;
         setLoading(true);
         try {
-            const { data, error } = await supabase
-                .from('people')
-                .select('*')
-                .eq('user_id', user.id)
-                .order('name');
-            if (error) throw error;
-            setPeople(data || []);
+            const [peopleRes, processesRes] = await Promise.all([
+                supabase.from('people').select('*').eq('user_id', user.id).order('name'),
+                supabase.from('processes')
+                    .select('id, process_number, current_phase, parties_info')
+                    .eq('user_id', user.id),
+            ]);
+            if (peopleRes.error) throw peopleRes.error;
+
+            const processes = processesRes.data || [];
+            const peopleWithLinks = (peopleRes.data || []).map(person => ({
+                ...person,
+                linkedProcesses: processes.filter(proc => {
+                    const pi = proc.parties_info || {};
+                    return pi.exequente_person_id === person.id
+                        || pi.executado_person_id === person.id
+                        || pi.depositary_person_id === person.id;
+                }),
+            }));
+
+            setPeople(peopleWithLinks);
         } catch (err) {
             toast({ variant: 'destructive', title: 'Erro ao carregar pessoas', description: err.message });
         } finally {
@@ -436,6 +451,28 @@ const People = () => {
                                         <div className="flex items-start gap-1.5 text-xs text-slate-500">
                                             <MapPin className="h-3.5 w-3.5 mt-0.5 shrink-0" />
                                             <span className="line-clamp-2">{addr}</span>
+                                        </div>
+                                    )}
+
+                                    {p.linkedProcesses?.length > 0 && (
+                                        <div className="flex flex-col gap-1 pt-2 border-t border-slate-100">
+                                            <p className="text-xs text-slate-400 font-medium flex items-center gap-1">
+                                                <FileText className="h-3 w-3" />
+                                                {p.linkedProcesses.length} penhora{p.linkedProcesses.length > 1 ? 's' : ''} vinculada{p.linkedProcesses.length > 1 ? 's' : ''}
+                                            </p>
+                                            {p.linkedProcesses.slice(0, 2).map(proc => (
+                                                <button
+                                                    key={proc.id}
+                                                    type="button"
+                                                    onClick={() => navigate(`/processes/${proc.id}`)}
+                                                    className="text-xs text-blue-600 hover:underline text-left truncate"
+                                                >
+                                                    {proc.process_number || 'Sem número'}
+                                                </button>
+                                            ))}
+                                            {p.linkedProcesses.length > 2 && (
+                                                <span className="text-xs text-slate-400">+{p.linkedProcesses.length - 2} mais</span>
+                                            )}
                                         </div>
                                     )}
 

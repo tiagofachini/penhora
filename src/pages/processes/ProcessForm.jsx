@@ -212,6 +212,20 @@ const ProcessForm = () => {
     }
   };
 
+  // If the party has a name but no linked person_id (user typed free text),
+  // create a new person record and return its id. If already linked, return existing id.
+  const ensurePerson = async (name, category, existingPersonId) => {
+    if (!name?.trim()) return null;
+    if (existingPersonId) return existingPersonId;
+    const { data, error } = await supabase
+      .from('people')
+      .insert({ user_id: user.id, name: name.trim(), category })
+      .select('id')
+      .single();
+    if (error) throw error;
+    return data.id;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -228,15 +242,29 @@ const ProcessForm = () => {
       neighborhood: formData.deposit_neighborhood, city: formData.deposit_city, state: formData.deposit_state,
     };
 
+    // Auto-create person records for any party typed as free text (no existing link)
+    let exequentePid, executadoPid, depositaryPid;
+    try {
+      [exequentePid, executadoPid, depositaryPid] = await Promise.all([
+        ensurePerson(formData.exequente,  'Exequente',   formData.exequente_person_id),
+        ensurePerson(formData.executado,  'Executado',   formData.executado_person_id),
+        ensurePerson(formData.depositary, 'Depositário', formData.depositary_person_id),
+      ]);
+    } catch (err) {
+      toast({ variant: 'destructive', title: 'Erro ao vincular pessoas', description: err.message });
+      setLoading(false);
+      return;
+    }
+
     const baseData = {
       process_number: formData.process_number,
       parties_info: {
         exequente:            formData.exequente,
-        exequente_person_id:  formData.exequente_person_id  || null,
+        exequente_person_id:  exequentePid  || null,
         executado:            formData.executado,
-        executado_person_id:  formData.executado_person_id  || null,
+        executado_person_id:  executadoPid  || null,
         depositary:           formData.depositary,
-        depositary_person_id: formData.depositary_person_id || null,
+        depositary_person_id: depositaryPid || null,
         deposit_location: JSON.stringify(depositAddressObject),
       },
       execution_date:    formData.execution_date || null,
