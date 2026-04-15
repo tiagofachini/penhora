@@ -36,18 +36,15 @@ jobs:
 
           LFTP_SETTINGS="set ftp:ssl-force true; set ftp:ssl-protect-data true; set ssl:verify-certificate false; set ftp:passive-mode true; set net:timeout 120; set net:max-retries 10; set net:reconnect-interval-base 5; set net:reconnect-interval-multiplier 1;"
 
-          # Step 1: Upload all files EXCEPT index.html (assets first, so they exist before the entrypoint)
-          LFTP_MIRROR_ASSETS="mirror --reverse --delete --no-perms --exclude '^index\\.html$' --verbose ./dist/ public_html/; bye"
-
-          # Step 2: Upload index.html last — only after all assets are in place
-          LFTP_UPLOAD_INDEX="put ./dist/index.html -o public_html/index.html; bye"
+          # Single session: mirror uploads assets/ before index.html (alphabetical order).
+          # Explicit put at the end guarantees index.html is always the last file written,
+          # so users never get new HTML pointing to assets that haven't arrived yet.
+          LFTP_CMD="mirror --reverse --delete --no-perms --verbose ./dist/ public_html/; put ./dist/index.html -o public_html/index.html; bye"
 
           for attempt in 1 2 3; do
             echo ">>> Deploy attempt $attempt/3"
             if lftp -u "u147485162.penhora.app.br,$FTP_PASSWORD" ftp://45.152.44.230 \
-                 -e "$LFTP_SETTINGS $LFTP_MIRROR_ASSETS" && \
-               lftp -u "u147485162.penhora.app.br,$FTP_PASSWORD" ftp://45.152.44.230 \
-                 -e "$LFTP_SETTINGS $LFTP_UPLOAD_INDEX"; then
+                 -e "$LFTP_SETTINGS $LFTP_CMD"; then
               echo ">>> Deploy successful on attempt $attempt"
               exit 0
             fi

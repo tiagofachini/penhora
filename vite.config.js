@@ -1,4 +1,5 @@
 import path from 'node:path';
+import fs from 'node:fs';
 import react from '@vitejs/plugin-react';
 import { createLogger, defineConfig } from 'vite';
 import inlineEditPlugin from './plugins/visual-editor/vite-plugin-react-inline-editor.js';
@@ -208,16 +209,42 @@ if (window.navigation && window.self !== window.top) {
 }
 `;
 
+// Single version string shared between transformIndexHtml and closeBundle
+let _buildVersion = null;
+const getBuildVersion = () => {
+	if (!_buildVersion) _buildVersion = String(Date.now());
+	return _buildVersion;
+};
+
 const addTransformIndexHtml = {
 	name: 'add-transform-index-html',
 	transformIndexHtml(html) {
+		const bv = !isDev ? getBuildVersion() : null;
 		const tags = [
-			// Build timestamp — forces proxy/CDN to treat each deploy as a new document
-			...(!isDev ? [{
-				tag: 'meta',
-				attrs: { name: 'build-timestamp', content: new Date().toISOString() },
-				injectTo: 'head',
-			}] : []),
+			// Build version: meta fingerprint + inline var + cache-bust check script.
+			// If the browser/proxy serves a stale index.html, this script detects the
+			// mismatch against /version.json (always fetched fresh) and redirects to
+			// a URL with a unique query param, which forces the proxy to fetch origin.
+			...(bv ? [
+				{
+					tag: 'meta',
+					attrs: { name: 'build-version', content: bv },
+					injectTo: 'head',
+				},
+				{
+					tag: 'script',
+					children: `window.__BV__="${bv}";`,
+					injectTo: 'head',
+				},
+				{
+					tag: 'script',
+					// Fetches /version.json with no-store. If server version differs from
+					// the version baked into this HTML and we haven't already redirected
+					// (no _r= param), replaces URL with a cache-busting query string.
+					children: `(function(){fetch('/version.json?_t='+Date.now(),{cache:'no-store'}).then(function(r){return r.json()}).then(function(d){if(d&&d.v&&d.v!==window.__BV__&&window.location.search.indexOf('_r=')===-1){window.location.replace(window.location.pathname+'?_r='+d.v+(window.location.hash||''))}}).catch(function(){})})();`,
+					injectTo: 'head',
+				},
+			] : []),
 			{
 				tag: 'script',
 				attrs: { type: 'module' },
@@ -267,6 +294,18 @@ const addTransformIndexHtml = {
 			html,
 			tags,
 		};
+	},
+	// Writes dist/version.json with the same version baked into index.html.
+	// version.json is served with no-store headers (covered by .htaccess default rule).
+	closeBundle() {
+		if (!isDev && _buildVersion) {
+			try {
+				fs.writeFileSync(
+					path.resolve(__dirname, 'dist/version.json'),
+					JSON.stringify({ v: _buildVersion })
+				);
+			} catch (e) { /* non-fatal */ }
+		}
 	},
 };
 
