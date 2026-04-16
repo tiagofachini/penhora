@@ -13,7 +13,6 @@ import {
   ArrowRight,
   CalendarCheck,
   DollarSign,
-  ShieldCheck,
   MapPin,
   User,
   ChevronLeft,
@@ -238,12 +237,6 @@ const Dashboard = () => {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <Button asChild variant="outline" className="shadow-sm">
-              <Link to="/audit">
-                <ShieldCheck className="mr-2 h-4 w-4" />
-                Auditoria
-              </Link>
-            </Button>
             <Button asChild className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm">
               <Link to="/processes/new">
                 <Plus className="mr-2 h-4 w-4" />

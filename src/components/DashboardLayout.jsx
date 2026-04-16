@@ -22,6 +22,7 @@ import {
   Users,
   Calendar,
   Shield,
+  History,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -150,6 +151,15 @@ const UserMenu = () => {
             <Link to="/team" className="w-full cursor-pointer flex items-center">
               <Users className="mr-2 h-4 w-4" />
               <span>Equipe</span>
+            </Link>
+          </DropdownMenuItem>
+        )}
+
+        {canManageTeam && (
+          <DropdownMenuItem asChild>
+            <Link to="/audit" className="w-full cursor-pointer flex items-center">
+              <History className="mr-2 h-4 w-4" />
+              <span>Auditoria</span>
             </Link>
           </DropdownMenuItem>
         )}
