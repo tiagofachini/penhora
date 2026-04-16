@@ -103,6 +103,7 @@ const UserMenu = () => {
 
   // "Minha Equipe" is visible only to account owners (no membership) or team admins
   const canManageTeam = !teamMembership || teamMembership.role === 'admin';
+  const canSeeAudit = canViewModule(teamMembership, 'audit');
 
   const userInitial =
     user?.user_metadata?.name?.[0]?.toUpperCase() ||
@@ -155,7 +156,7 @@ const UserMenu = () => {
           </DropdownMenuItem>
         )}
 
-        {canManageTeam && (
+        {canSeeAudit && (
           <DropdownMenuItem asChild>
             <Link to="/audit" className="w-full cursor-pointer flex items-center">
               <History className="mr-2 h-4 w-4" />

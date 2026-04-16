@@ -33,6 +33,7 @@ const MODULES = [
   { key: 'processes', label: 'Penhoras' },
   { key: 'people',    label: 'Pessoas' },
   { key: 'calendar',  label: 'Agenda' },
+  { key: 'audit',     label: 'Auditoria', actions: ['view'] },
 ];
 
 const ACTIONS = [
@@ -45,12 +46,14 @@ const DEFAULT_PERMISSIONS = {
   processes: { view: true,  edit: true,  delete: false },
   people:    { view: true,  edit: false, delete: false },
   calendar:  { view: true,  edit: true,  delete: false },
+  audit:     { view: false },
 };
 
 const ADMIN_PERMISSIONS = {
   processes: { view: true, edit: true, delete: true },
   people:    { view: true, edit: true, delete: true },
   calendar:  { view: true, edit: true, delete: true },
+  audit:     { view: true },
 };
 
 /* ─────────── PermissionMatrix ─────────── */
@@ -85,17 +88,24 @@ const PermissionMatrix = ({ permissions, onChange, disabled }) => {
           {MODULES.map(mod => (
             <TableRow key={mod.key}>
               <TableCell className="font-medium text-slate-800">{mod.label}</TableCell>
-              {ACTIONS.map(action => (
-                <TableCell key={action.key} className="text-center">
-                  <div className="flex justify-center">
-                    <Checkbox
-                      checked={!!(permissions[mod.key]?.[action.key])}
-                      onCheckedChange={() => toggle(mod.key, action.key)}
-                      disabled={disabled}
-                    />
-                  </div>
-                </TableCell>
-              ))}
+              {ACTIONS.map(action => {
+                const supported = !mod.actions || mod.actions.includes(action.key);
+                return (
+                  <TableCell key={action.key} className="text-center">
+                    {supported ? (
+                      <div className="flex justify-center">
+                        <Checkbox
+                          checked={!!(permissions[mod.key]?.[action.key])}
+                          onCheckedChange={() => toggle(mod.key, action.key)}
+                          disabled={disabled}
+                        />
+                      </div>
+                    ) : (
+                      <span className="text-slate-300 select-none">—</span>
+                    )}
+                  </TableCell>
+                );
+              })}
             </TableRow>
           ))}
         </TableBody>
