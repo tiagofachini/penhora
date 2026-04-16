@@ -12,12 +12,11 @@ import { Loader2 } from 'lucide-react';
 const logoSrc = "https://horizons-cdn.hostinger.com/d89750d7-1f5d-466f-8dd9-087252acee70/2d8010627a52ee48131ebed25f5ffc09.png";
 
 const Login = () => {
-  const { signIn, signInWithOtp, signInWithGoogle } = useAuth();
+  const { signIn, signInWithGoogle, resetPassword } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-  const [isMagicLink, setIsMagicLink] = useState(false);
   const [formData, setFormData] = useState({ email: '', password: '' });
 
   const handleChange = (e) => {
@@ -44,35 +43,36 @@ const Login = () => {
     e.preventDefault();
     setIsLoading(true);
     try {
-      if (isMagicLink) {
-        if (!formData.email) throw new Error("Email é obrigatório");
-        
-        // This uses the updated signInWithOtp with correct redirect URL
-        const { error } = await signInWithOtp({ email: formData.email });
-        if (error) throw error;
-        
-        toast({
-          title: "Link de acesso enviado!",
-          description: "Verifique sua caixa de entrada (e spam) para acessar o sistema.",
-          duration: 6000,
-        });
-      } else {
-        if (!formData.email || !formData.password) throw new Error("Email e senha são obrigatórios");
-        const { error } = await signIn({ email: formData.email, password: formData.password });
-        if (error) throw error;
-        window.location.href = 'https://www.penhora.app.br/dashboard';
-      }
+      if (!formData.email || !formData.password) throw new Error("Email e senha são obrigatórios");
+      const { error } = await signIn({ email: formData.email, password: formData.password });
+      if (error) throw error;
+      window.location.href = 'https://www.penhora.app.br/dashboard';
     } catch (error) {
       console.error(error);
       toast({
         variant: "destructive",
         title: "Erro no login",
-        description: error.message === "Invalid login credentials" 
-          ? "Credenciais inválidas. Verifique seu email e senha." 
+        description: error.message === "Invalid login credentials"
+          ? "Credenciais inválidas. Verifique seu email e senha."
           : "Não foi possível realizar o login. Tente novamente.",
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async (e) => {
+    e.preventDefault();
+    if (!formData.email) {
+      toast({ variant: 'destructive', title: 'Informe seu email', description: 'Preencha o campo de email antes de solicitar a redefinição de senha.' });
+      return;
+    }
+    try {
+      const { error } = await resetPassword(formData.email);
+      if (error) throw error;
+      toast({ title: 'Email enviado!', description: 'Verifique sua caixa de entrada para redefinir a senha.', duration: 6000 });
+    } catch (err) {
+      toast({ variant: 'destructive', title: 'Erro', description: err.message });
     }
   };
 
@@ -129,54 +129,34 @@ const Login = () => {
                 />
               </div>
               
-              {!isMagicLink && (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="password">Senha</Label>
-                    <Link 
-                      to="#" 
-                      onClick={(e) => {
-                        e.preventDefault();
-                        setIsMagicLink(true); 
-                        toast({ description: "Dica: O Link Mágico enviará um acesso direto para seu email." });
-                      }}
-                      className="text-xs text-blue-600 hover:underline"
-                    >
-                      Esqueceu a senha?
-                    </Link>
-                  </div>
-                  <Input 
-                    id="password" 
-                    type="password" 
-                    value={formData.password}
-                    onChange={handleChange}
-                    required={!isMagicLink}
-                  />
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password">Senha</Label>
+                  <Link
+                    to="#"
+                    onClick={handleForgotPassword}
+                    className="text-xs text-blue-600 hover:underline"
+                  >
+                    Esqueceu a senha?
+                  </Link>
                 </div>
-              )}
+                <Input
+                  id="password"
+                  type="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
 
               <Button type="submit" className="w-full" disabled={isLoading || isGoogleLoading}>
                 {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    {isMagicLink ? 'Enviando Link...' : 'Entrando...'}
-                  </>
-                ) : (
-                  isMagicLink ? 'Enviar Link de Acesso' : 'Entrar'
-                )}
+                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Entrando…</>
+                ) : 'Entrar'}
               </Button>
             </form>
           </div>
 
-          <div className="mt-4 text-center">
-            <Button 
-              variant="link" 
-              className="text-sm text-slate-500"
-              onClick={() => setIsMagicLink(!isMagicLink)}
-            >
-              {isMagicLink ? 'Usar senha' : 'Entrar sem senha (Magic Link)'}
-            </Button>
-          </div>
         </CardContent>
         <CardFooter className="flex justify-center border-t p-4">
           <p className="text-sm text-slate-500">
