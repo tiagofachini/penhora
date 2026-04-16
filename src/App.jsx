@@ -24,6 +24,7 @@ import ScanBarcodePage from '@/pages/items/ScanBarcodePage';
 import CapturePhotoPage from '@/pages/items/CapturePhotoPage';
 import ManualEntryPage from '@/pages/items/ManualEntryPage';
 import CalendarPage from '@/pages/CalendarPage';
+import ReferralsPage from '@/pages/ReferralsPage';
 import Consent from '@/pages/oauth/Consent';
 
 const AppContent = () => {
@@ -71,6 +72,7 @@ const AppContent = () => {
           <Route path="/team" element={<MyTeam />} />
           <Route path="/people" element={<People />} />
           <Route path="/audit" element={<AuditPage />} />
+          <Route path="/referrals" element={<ReferralsPage />} />
           
           <Route path="/items/scan-barcode" element={<ScanBarcodePage />} />
           <Route path="/items/capture-photo" element={<CapturePhotoPage />} />

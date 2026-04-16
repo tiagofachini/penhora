@@ -23,6 +23,7 @@ import {
   Calendar,
   Shield,
   History,
+  Gift,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -71,6 +72,23 @@ const SidebarContent = ({ teamMembership }) => {
           </NavLink>
         ))}
       </nav>
+
+      {/* Referral link — pinned to bottom */}
+      <div className="px-4 pb-2">
+        <NavLink
+          to="/referrals"
+          className={({ isActive }) =>
+            `flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all ${
+              isActive
+                ? 'bg-purple-100 text-purple-700'
+                : 'text-purple-600 hover:bg-purple-50 hover:text-purple-700'
+            }`
+          }
+        >
+          <Gift className="h-5 w-5" />
+          Indicar Amigos
+        </NavLink>
+      </div>
 
       {/* Team member context badge */}
       {teamMembership && (
