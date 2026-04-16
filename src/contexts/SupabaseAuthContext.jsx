@@ -13,7 +13,7 @@ export const AuthProvider = ({ children }) => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [teamMembership, setTeamMembership] = useState(null);
 
-  const CUSTOM_DOMAIN = 'https://go.penhora.app.br';
+  const CUSTOM_DOMAIN = 'https://www.penhora.app.br';
   const SITE_URL = `${CUSTOM_DOMAIN}/dashboard`;
   const SUPER_ADMIN_EMAIL = 'emaildogago@gmail.com';
 
