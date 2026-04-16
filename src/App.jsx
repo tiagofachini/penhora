@@ -1,5 +1,25 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+
+// Checks /version.json on every client-side route change.
+// If the deployed version differs from the one baked into this index.html,
+// forces a full page reload so users never get stuck on stale JS/CSS bundles.
+// window.__BV__ is only set in production builds (see vite.config.js).
+const VersionChecker = () => {
+  const location = useLocation();
+  useEffect(() => {
+    if (!window.__BV__) return;
+    fetch('/version.json?_t=' + Date.now(), { cache: 'no-store' })
+      .then(r => r.json())
+      .then(d => {
+        if (d?.v && d.v !== window.__BV__) {
+          window.location.replace(location.pathname + '?_r=' + d.v + (location.hash || ''));
+        }
+      })
+      .catch(() => {});
+  }, [location.pathname]);
+  return null;
+};
 import { Toaster } from '@/components/ui/toaster';
 import Home from '@/pages/Home';
 import Benefits from '@/pages/Benefits';
@@ -49,6 +69,7 @@ const AppContent = () => {
 
   return (
     <div className="min-h-screen bg-white text-slate-800">
+      <VersionChecker />
       {shouldShowHeader && <Header />}
       <Routes>
         <Route path="/" element={<Home />} />
