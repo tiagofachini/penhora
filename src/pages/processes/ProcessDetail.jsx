@@ -284,12 +284,69 @@ const ProcessDetail = () => {
     const handleGeneratePDF = async () => {
         setIsGeneratingPdf(true);
         try {
+            // Fetch user profile for logo / company branding
+            const { data: profileData } = await supabase
+                .from('users')
+                .select('name, company_name, logo_url, company_address')
+                .eq('id', user.id)
+                .single();
+
+            const logoBase64 = profileData?.logo_url
+                ? await getBase64FromUrl(profileData.logo_url)
+                : null;
+
             const doc = new jsPDF();
             const pageWidth = doc.internal.pageSize.getWidth();
             const pageHeight = doc.internal.pageSize.getHeight();
-            let currentY = 20;
+            let currentY = 14;
 
             // --- HEADER ---
+            const hasLogo = !!logoBase64;
+            const hasCompany = !!(profileData?.company_name);
+
+            if (hasLogo || hasCompany) {
+                const logoH = 18; // logo height in mm
+                const logoMaxW = 40;
+
+                if (hasLogo) {
+                    // Fit logo proportionally within logoMaxW × logoH
+                    doc.addImage(logoBase64, 'PNG', 14, currentY, logoMaxW, logoH, undefined, 'FAST');
+                }
+
+                // Company name + optional address to the right of the logo
+                const textX = hasLogo ? 14 + logoMaxW + 4 : 14;
+                const textMaxW = pageWidth - textX - 14;
+                let textY = currentY + 4;
+
+                if (hasCompany) {
+                    doc.setFont("helvetica", "bold");
+                    doc.setFontSize(11);
+                    doc.text(profileData.company_name, textX, textY, { maxWidth: textMaxW });
+                    textY += 6;
+                }
+
+                const addr = profileData?.company_address;
+                if (addr?.logradouro) {
+                    doc.setFont("helvetica", "normal");
+                    doc.setFontSize(8);
+                    const addrParts = [
+                        addr.logradouro,
+                        addr.number,
+                        addr.complement,
+                        addr.neighborhood,
+                        addr.city && addr.state ? `${addr.city} - ${addr.state}` : (addr.city || addr.state),
+                        addr.cep,
+                    ].filter(Boolean).join(', ');
+                    doc.text(addrParts, textX, textY, { maxWidth: textMaxW });
+                }
+
+                currentY += Math.max(logoH, 18) + 6;
+                doc.setLineWidth(0.3);
+                doc.setDrawColor(200, 200, 200);
+                doc.line(14, currentY, pageWidth - 14, currentY);
+                currentY += 8;
+            }
+
             doc.setFont("helvetica", "bold");
             doc.setFontSize(16);
             doc.text("AUTO DE PENHORA, AVALIAÇÃO E DEPÓSITO", pageWidth / 2, currentY, { align: "center" });
