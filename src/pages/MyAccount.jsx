@@ -277,14 +277,6 @@ const MyAccount = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="company_name">Empresa / Escritório</Label>
-                <div className="relative">
-                  <Building className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
-                  <Input id="company_name" value={formData.company_name} onChange={handleChange} className="pl-10" placeholder="Nome da empresa" />
-                </div>
-              </div>
-
-              <div className="space-y-2">
                 <Label htmlFor="email">E-mail</Label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
@@ -315,6 +307,14 @@ const MyAccount = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="company_name">Empresa / Escritório</Label>
+                <div className="relative">
+                  <Building className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                  <Input id="company_name" value={formData.company_name} onChange={handleChange} className="pl-10" placeholder="Nome da empresa" />
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="cep">CEP</Label>
