@@ -23,7 +23,7 @@ const PROCESS_PHASES = [
 const ProcessForm = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, effectiveOwnerId } = useAuth();
   const { toast } = useToast();
 
   const [formData, setFormData] = useState({
@@ -102,7 +102,7 @@ const ProcessForm = () => {
           .from('processes')
           .select('*')
           .eq('id', id)
-          .eq('user_id', user.id)
+          .eq('user_id', effectiveOwnerId)
           .single();
         if (error) throw error;
 
@@ -222,7 +222,7 @@ const ProcessForm = () => {
     if (existingPersonId) return existingPersonId;
     const { data, error } = await supabase
       .from('people')
-      .insert({ user_id: user.id, name: name.trim(), category })
+      .insert({ user_id: effectiveOwnerId, name: name.trim(), category })
       .select('id')
       .single();
     if (error) throw error;
@@ -282,7 +282,7 @@ const ProcessForm = () => {
       if (isEditing) {
         result = await supabase.from('processes').update(baseData).eq('id', id).select().single();
       } else {
-        result = await supabase.from('processes').insert({ user_id: user.id, ...baseData }).select().single();
+        result = await supabase.from('processes').insert({ user_id: effectiveOwnerId, ...baseData }).select().single();
       }
       const { data, error } = result;
       if (error) throw error;

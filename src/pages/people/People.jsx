@@ -40,7 +40,7 @@ const EMPTY_FORM = {
 };
 
 const PersonDialog = ({ open, onOpenChange, person, onSaved }) => {
-    const { user } = useAuth();
+    const { user, effectiveOwnerId } = useAuth();
     const { toast } = useToast();
     const [form, setForm] = useState(EMPTY_FORM);
     const [saving, setSaving] = useState(false);
@@ -109,7 +109,7 @@ const PersonDialog = ({ open, onOpenChange, person, onSaved }) => {
         setSaving(true);
         try {
             const payload = {
-                user_id:      user.id,
+                user_id:      effectiveOwnerId,
                 name:         form.name.trim(),
                 cpf:          form.cpf     || null,
                 category:     form.category || null,
@@ -247,7 +247,7 @@ const PersonDialog = ({ open, onOpenChange, person, onSaved }) => {
 
 /* ─────────────────────────── People (list page) ─────────────────────── */
 const People = () => {
-    const { user } = useAuth();
+    const { user, effectiveOwnerId } = useAuth();
     const { toast } = useToast();
     const navigate = useNavigate();
 
@@ -267,10 +267,10 @@ const People = () => {
         setLoading(true);
         try {
             const [peopleRes, processesRes] = await Promise.all([
-                supabase.from('people').select('*').eq('user_id', user.id).order('name'),
+                supabase.from('people').select('*').eq('user_id', effectiveOwnerId).order('name'),
                 supabase.from('processes')
                     .select('id, process_number, current_phase, parties_info')
-                    .eq('user_id', user.id),
+                    .eq('user_id', effectiveOwnerId),
             ]);
             if (peopleRes.error) throw peopleRes.error;
 

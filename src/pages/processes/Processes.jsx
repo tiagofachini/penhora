@@ -41,7 +41,7 @@ const PROCESS_PHASES = [
 ];
 
 const Processes = () => {
-    const { user } = useAuth();
+    const { user, effectiveOwnerId } = useAuth();
     const navigate = useNavigate();
     const { toast } = useToast();
 
@@ -63,7 +63,7 @@ const Processes = () => {
             const { data: procData, error: procError } = await supabase
                 .from('processes')
                 .select('*')
-                .eq('user_id', user.id)
+                .eq('user_id', effectiveOwnerId)
                 .order('created_at', { ascending: false });
             if (procError) throw procError;
 
