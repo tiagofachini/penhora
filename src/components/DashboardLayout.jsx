@@ -212,7 +212,7 @@ const DashboardLayout = () => {
 
   return (
     <div className="grid min-h-screen w-full lg:grid-cols-[280px_1fr]">
-      <div className="hidden border-r bg-slate-50/40 lg:block">
+      <div className="hidden border-r bg-slate-50/40 lg:block sticky top-0 h-screen overflow-y-auto">
         <SidebarContent teamMembership={teamMembership} />
       </div>
       <div className="flex flex-col">
