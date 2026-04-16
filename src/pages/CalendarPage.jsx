@@ -22,9 +22,20 @@ import {
 } from "@/components/ui/select";
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
-import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, MapPin, Clock, FileText, ArrowRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, MapPin, Clock, FileText, ArrowRight, ExternalLink } from 'lucide-react';
 import DiligenceForm from '@/components/DiligenceForm';
 import { formatAddress } from '@/lib/address';
+import { MapContainer, TileLayer, Marker } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
+
+// Fix default marker icon for Leaflet bundled with Vite
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+});
 
 const CalendarPage = () => {
   const { user } = useAuth();
@@ -38,6 +49,10 @@ const CalendarPage = () => {
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [selectedDiligence, setSelectedDiligence] = useState(null);
   
+  // Map state for detail modal
+  const [mapCoordinates, setMapCoordinates] = useState(null);
+  const [mapLoading, setMapLoading] = useState(false);
+
   // New Diligence State
   const [selectedDate, setSelectedDate] = useState(null);
   const [processes, setProcesses] = useState([]);
@@ -95,6 +110,30 @@ const CalendarPage = () => {
   useEffect(() => {
     fetchDiligences();
   }, [user]);
+
+  // Geocode when detail modal opens with a diligence that has a location
+  useEffect(() => {
+    if (!isDetailModalOpen || !selectedDiligence?.location) {
+      setMapCoordinates(null);
+      return;
+    }
+    const address = formatAddress(selectedDiligence.location);
+    if (!address) { setMapCoordinates(null); return; }
+
+    setMapCoordinates(null);
+    setMapLoading(true);
+    fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`, {
+      headers: { 'Accept-Language': 'pt-BR' },
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (data && data.length > 0) {
+          setMapCoordinates([parseFloat(data[0].lat), parseFloat(data[0].lon)]);
+        }
+      })
+      .catch(() => {}) // silently ignore geocoding failures
+      .finally(() => setMapLoading(false));
+  }, [isDetailModalOpen, selectedDiligence]);
 
   // Calendar Logic
   const getDaysInMonth = (date) => {
@@ -316,7 +355,7 @@ const CalendarPage = () => {
 
       {/* Detail Modal */}
       <Dialog open={isDetailModalOpen} onOpenChange={setIsDetailModalOpen}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
                 <DialogTitle className="flex items-center gap-2">
                     <span className={`w-3 h-3 rounded-full ${selectedDiligence?.status === 'Realizada' ? 'bg-green-500' : selectedDiligence?.status === 'Cancelada' ? 'bg-red-500' : 'bg-blue-500'}`}></span>
@@ -326,7 +365,7 @@ const CalendarPage = () => {
                     Detalhes do agendamento
                 </DialogDescription>
             </DialogHeader>
-            
+
             {selectedDiligence && (
                 <div className="space-y-6 py-4">
                     <div className="grid gap-4">
@@ -342,9 +381,44 @@ const CalendarPage = () => {
 
                         <div className="flex items-start gap-3">
                             <MapPin className="h-5 w-5 text-slate-400 mt-0.5" />
-                            <div>
-                                <h4 className="font-semibold text-sm text-slate-700">Localização</h4>
-                                <p className="text-sm text-slate-600">{formatAddress(selectedDiligence.location)}</p>
+                            <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between gap-2">
+                                    <h4 className="font-semibold text-sm text-slate-700">Localização</h4>
+                                    {formatAddress(selectedDiligence.location) && (
+                                        <a
+                                            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(formatAddress(selectedDiligence.location))}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 font-medium shrink-0"
+                                        >
+                                            Google Maps <ExternalLink className="h-3 w-3" />
+                                        </a>
+                                    )}
+                                </div>
+                                <p className="text-sm text-slate-600 mt-0.5">{formatAddress(selectedDiligence.location)}</p>
+
+                                {/* Leaflet Map */}
+                                {mapLoading && (
+                                    <div className="mt-3 h-48 bg-slate-100 rounded-lg flex items-center justify-center text-sm text-slate-400 animate-pulse">
+                                        Carregando mapa…
+                                    </div>
+                                )}
+                                {mapCoordinates && !mapLoading && (
+                                    <div className="mt-3 rounded-lg overflow-hidden border border-slate-200" style={{ height: '220px' }}>
+                                        <MapContainer
+                                            center={mapCoordinates}
+                                            zoom={16}
+                                            scrollWheelZoom={false}
+                                            style={{ height: '100%', width: '100%' }}
+                                        >
+                                            <TileLayer
+                                                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                                                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                                            />
+                                            <Marker position={mapCoordinates} />
+                                        </MapContainer>
+                                    </div>
+                                )}
                             </div>
                         </div>
 
