@@ -6,8 +6,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Users, CreditCard, Loader2, CheckCircle2,
   Search, Filter, Edit, RefreshCw, Copy, Check,
-  Phone, MapPin, Hash,
+  Phone, MapPin, Hash, ShieldX, ShieldCheck,
 } from 'lucide-react';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
@@ -67,6 +71,10 @@ const AdminPanel = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [stateFilter, setStateFilter] = useState('all');
 
+  // Block/unblock
+  const [blockTarget, setBlockTarget] = useState(null); // { user, action: 'block'|'unblock' }
+  const [blocking, setBlocking] = useState(false);
+
   // Edit dialog
   const [editingUser, setEditingUser] = useState(null);
   const [editForm, setEditForm] = useState({
@@ -100,7 +108,7 @@ const AdminPanel = () => {
       const { data, error } = await supabase
         .from('users')
         .select(`
-          id, name, email, company_name, phone, company_address, created_at,
+          id, name, email, company_name, phone, company_address, is_active, created_at,
           subscriptions ( id, plan_type, status, seizure_limit, item_limit, monthly_value )
         `)
         .order('created_at', { ascending: false });
@@ -111,6 +119,7 @@ const AdminPanel = () => {
         ...u,
         subscription: u.subscriptions?.[0] ?? null,
         state: u.company_address?.state ?? null,
+        is_active: u.is_active !== false,
       })));
     } catch (err) {
       toast({ variant: 'destructive', title: 'Erro', description: err.message });
@@ -172,6 +181,29 @@ const AdminPanel = () => {
       toast({ variant: 'destructive', title: 'Erro ao salvar', description: err.message });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleToggleBlock = async () => {
+    if (!blockTarget) return;
+    setBlocking(true);
+    const { user: targetUser, action } = blockTarget;
+    const newActive = action === 'unblock';
+    try {
+      const { error } = await supabase
+        .from('users')
+        .update({ is_active: newActive })
+        .eq('id', targetUser.id);
+      if (error) throw error;
+      setUsersList(prev => prev.map(u =>
+        u.id === targetUser.id ? { ...u, is_active: newActive } : u
+      ));
+      toast({ title: newActive ? 'Usuário ativado' : 'Usuário bloqueado', description: targetUser.email });
+    } catch (err) {
+      toast({ variant: 'destructive', title: 'Erro', description: err.message });
+    } finally {
+      setBlocking(false);
+      setBlockTarget(null);
     }
   };
 
@@ -350,16 +382,45 @@ const AdminPanel = () => {
                         ? <Badge variant="secondary" className="font-medium">{u.state}</Badge>
                         : <span className="text-slate-300 text-sm">—</span>}
                     </TableCell>
-                    <TableCell>{statusBadge(u.subscription?.status)}</TableCell>
+                    <TableCell>
+                      <div className="flex flex-col gap-1">
+                        {statusBadge(u.subscription?.status)}
+                        {!u.is_active && (
+                          <Badge className="bg-red-100 text-red-700 hover:bg-red-100 w-fit">Bloqueado</Badge>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell>
                       <span className="text-sm capitalize text-slate-600">
                         {u.subscription?.plan_type || '—'}
                       </span>
                     </TableCell>
                     <TableCell className="text-center">
-                      <Button variant="ghost" size="sm" onClick={() => handleEditClick(u)}>
-                        <Edit className="h-4 w-4 text-blue-600" />
-                      </Button>
+                      <div className="flex items-center justify-center gap-1">
+                        <Button variant="ghost" size="sm" onClick={() => handleEditClick(u)} title="Editar plano">
+                          <Edit className="h-4 w-4 text-blue-600" />
+                        </Button>
+                        {u.email !== adminEmail && (
+                          u.is_active
+                            ? (
+                              <Button variant="ghost" size="sm"
+                                title="Bloquear usuário"
+                                onClick={() => setBlockTarget({ user: u, action: 'block' })}
+                                className="text-slate-400 hover:text-red-600 hover:bg-red-50"
+                              >
+                                <ShieldX className="h-4 w-4" />
+                              </Button>
+                            ) : (
+                              <Button variant="ghost" size="sm"
+                                title="Desbloquear usuário"
+                                onClick={() => setBlockTarget({ user: u, action: 'unblock' })}
+                                className="text-red-400 hover:text-green-600 hover:bg-green-50"
+                              >
+                                <ShieldCheck className="h-4 w-4" />
+                              </Button>
+                            )
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -368,6 +429,34 @@ const AdminPanel = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Block / Unblock Confirmation */}
+      <AlertDialog open={!!blockTarget} onOpenChange={open => !open && setBlockTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {blockTarget?.action === 'block' ? 'Bloquear usuário?' : 'Desbloquear usuário?'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {blockTarget?.action === 'block'
+                ? <>O usuário <strong>{blockTarget?.user.email}</strong> será bloqueado e não conseguirá mais acessar o sistema.</>
+                : <>O usuário <strong>{blockTarget?.user.email}</strong> terá o acesso restaurado.</>
+              }
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={blocking}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleToggleBlock}
+              disabled={blocking}
+              className={blockTarget?.action === 'block' ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'}
+            >
+              {blocking && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {blockTarget?.action === 'block' ? 'Bloquear' : 'Desbloquear'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Edit Plan Dialog */}
       <Dialog open={!!editingUser} onOpenChange={open => !open && setEditingUser(null)}>

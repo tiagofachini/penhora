@@ -105,6 +105,18 @@ export const AuthProvider = ({ children }) => {
     setUser(session?.user ?? null);
     setLoading(false);
     if (session?.user) {
+      // Block inactive users before anything else
+      const { data: profile } = await supabase
+        .from('users')
+        .select('is_active')
+        .eq('id', session.user.id)
+        .maybeSingle();
+      if (profile && profile.is_active === false) {
+        await supabase.auth.signOut();
+        window.location.replace('/login?blocked=1');
+        return;
+      }
+
       await checkAdminStatus(session.user.email);
       await handleTeamMembership(session.user);
       // Sync profile for OAuth users

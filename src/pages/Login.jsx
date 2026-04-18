@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -7,13 +7,15 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { Helmet } from 'react-helmet-async';
-import { Loader2 } from 'lucide-react';
+import { Loader2, ShieldX } from 'lucide-react';
 
 const logoSrc = "https://horizons-cdn.hostinger.com/d89750d7-1f5d-466f-8dd9-087252acee70/2d8010627a52ee48131ebed25f5ffc09.png";
 
 const Login = () => {
   const { signIn, signInWithGoogle, resetPassword } = useAuth();
   const navigate = useNavigate();
+  const { search } = useLocation();
+  const isBlocked = new URLSearchParams(search).get('blocked') === '1';
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
@@ -82,6 +84,13 @@ const Login = () => {
         <title>Login - Penhora.app.br</title>
       </Helmet>
       
+      {isBlocked && (
+        <div className="w-full max-w-md mb-4 flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700">
+          <ShieldX className="h-5 w-5 mt-0.5 shrink-0" />
+          <p className="text-sm font-medium">Seu usuário está bloqueado e não pode acessar o sistema.</p>
+        </div>
+      )}
+
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
           <Link to="/" className="flex justify-center mb-4">
