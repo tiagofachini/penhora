@@ -105,21 +105,29 @@ const AdminPanel = () => {
         totalProcesses: processesCount.count || 0,
       });
 
-      const { data, error } = await supabase
-        .from('users')
-        .select(`
-          id, name, email, company_name, phone, company_address, is_active, created_at,
-          subscriptions ( id, plan_type, status, seizure_limit, item_limit, monthly_value )
-        `)
-        .order('created_at', { ascending: false });
+      const [{ data, error }, { data: statsData }] = await Promise.all([
+        supabase
+          .from('users')
+          .select(`
+            id, name, email, company_name, phone, company_address, is_active, created_at,
+            subscriptions ( id, plan_type, status, seizure_limit, item_limit, monthly_value )
+          `)
+          .order('created_at', { ascending: false }),
+        supabase.rpc('get_admin_user_stats'),
+      ]);
 
       if (error) throw error;
+
+      const statsMap = Object.fromEntries((statsData ?? []).map(s => [s.user_id, s]));
 
       setUsersList(data.map(u => ({
         ...u,
         subscription: u.subscriptions?.[0] ?? null,
         state: u.company_address?.state ?? null,
         is_active: u.is_active !== false,
+        process_count: Number(statsMap[u.id]?.process_count ?? 0),
+        item_count: Number(statsMap[u.id]?.item_count ?? 0),
+        total_valuation: Number(statsMap[u.id]?.total_valuation ?? 0),
       })));
     } catch (err) {
       toast({ variant: 'destructive', title: 'Erro', description: err.message });
@@ -348,6 +356,9 @@ const AdminPanel = () => {
                   <TableHead>
                     <span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />Estado</span>
                   </TableHead>
+                  <TableHead className="text-right">Processos</TableHead>
+                  <TableHead className="text-right">Itens</TableHead>
+                  <TableHead className="text-right">Valoração</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Plano</TableHead>
                   <TableHead className="text-center">Ações</TableHead>
@@ -356,7 +367,7 @@ const AdminPanel = () => {
               <TableBody>
                 {filteredUsers.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-12 text-slate-400">
+                    <TableCell colSpan={10} className="text-center py-12 text-slate-400">
                       Nenhum usuário encontrado com os filtros aplicados.
                     </TableCell>
                   </TableRow>
@@ -381,6 +392,17 @@ const AdminPanel = () => {
                       {u.state
                         ? <Badge variant="secondary" className="font-medium">{u.state}</Badge>
                         : <span className="text-slate-300 text-sm">—</span>}
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-sm">
+                      {u.process_count || <span className="text-slate-300">0</span>}
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-sm">
+                      {u.item_count || <span className="text-slate-300">0</span>}
+                    </TableCell>
+                    <TableCell className="text-right text-sm whitespace-nowrap">
+                      {u.total_valuation > 0
+                        ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(u.total_valuation)
+                        : <span className="text-slate-300">—</span>}
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-col gap-1">
