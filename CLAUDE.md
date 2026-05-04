@@ -1,55 +1,137 @@
-# CLAUDE.md
+# CLAUDE.md — Guia de trabalho para este projeto
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+## Estilo de trabalho
 
-## Commands
+- **Planeje antes de executar** tarefas com múltiplos arquivos ou impacto em banco. Para tarefas simples, execute diretamente.
+- **Commit e push a cada entrega concluída** — nunca deixe mudanças relevantes sem versionar.
+- **Build antes de commitar** (`npm run build`) para garantir que nenhum erro de compilação vai para produção.
+- Quando uma tarefa depende de ação manual do usuário em serviços externos (Supabase, GitHub, DNS), forneça o **link direto** e a instrução exata do que deve ser feito — não peça para o usuário "ir lá e configurar".
+- Comunique o que está fazendo em frases curtas. Ao terminar, resuma o que mudou e o que ainda depende do usuário.
 
-```bash
-npm run dev       # Start dev server on port 3000
-npm run build     # Generate llms.txt then Vite production build
-npm run lint      # ESLint (quiet mode — only errors, no warnings)
+---
+
+## Stack técnica
+
+| Camada | Tecnologia |
+|---|---|
+| Frontend | React 18 + Vite + React Router v6 |
+| Estilo | Tailwind CSS + shadcn/ui + Framer Motion |
+| Backend / DB | Supabase (PostgreSQL + Auth + Storage) |
+| Edge Functions | Supabase Functions (Deno/TypeScript) |
+| E-mail transacional | Resend (`notificacoes@penhora.app.br`) |
+| Hosting | Hostinger — Apache com `.htaccess` |
+| CI/CD | GitHub Actions (`.github/workflows/`) |
+
+---
+
+## Git
+
+- Branch de desenvolvimento: definida no início de cada sessão.
+- Nunca commitar em `main` diretamente sem passar pelo fluxo de build.
+- Mensagens de commit descritivas no formato `tipo: descrição curta`.
+- Sempre `git push -u origin <branch>` após cada commit relevante.
+- O arquivo `public/.htaccess` é copiado automaticamente para `dist/` pelo Vite — commitar ambos não é necessário pois `dist/` está no `.gitignore`.
+
+---
+
+## Supabase — padrões obrigatórios
+
+### Tabelas e RLS
+- Toda tabela nova recebe `ALTER TABLE ... ENABLE ROW LEVEL SECURITY`.
+- Policies separadas por operação (`FOR INSERT`, `FOR SELECT`, etc.) e por role (`anon`, `authenticated`).
+- Dados sensíveis (PII: e-mail, telefone, nome) bloqueados para `anon` via SELECT — lidos apenas por RPCs `SECURITY DEFINER`.
+
+### RPCs (funções SQL)
+- Usar `LANGUAGE plpgsql SECURITY DEFINER SET search_path = public` em toda função que precisa bypassar RLS ou acessar dados protegidos.
+- `GRANT EXECUTE ON FUNCTION ... TO anon, authenticated` sempre após criar a função.
+- Migrations incrementais: usar `CREATE OR REPLACE FUNCTION` quando o tipo de retorno não muda; usar `DROP FUNCTION IF EXISTS ... CASCADE` explicitamente **antes** do `CREATE OR REPLACE` quando o tipo de retorno muda — e colocar o DROP no início do arquivo, não no meio.
+
+### Migrations SQL
+- Arquivos em `supabase/sql/` — um arquivo por feature.
+- Sempre idempotentes: usar `IF NOT EXISTS`, `CREATE OR REPLACE`, `DROP ... IF EXISTS`.
+- Quando o Supabase Dashboard rejeitar por conflito de tipo de retorno, a solução é rodar o DROP como query separada antes de rodar o arquivo completo.
+- Link direto para o SQL editor: `https://supabase.com/dashboard/project/<PROJECT_REF>/sql/new`
+
+### Edge Functions
+- Criadas em `supabase/functions/<nome>/index.ts`.
+- Deploy manual pelo usuário: `npx supabase functions deploy <nome> --project-ref <PROJECT_REF>`.
+- Variáveis de ambiente configuradas no Dashboard: `https://supabase.com/dashboard/project/<PROJECT_REF>/functions`.
+- Sempre validar inputs **antes** de consumir APIs pagas (Anthropic, Resend, etc.) — nunca consumir crédito para depois falhar em validação.
+
+---
+
+## Hospedagem Apache (Hostinger)
+
+O arquivo `public/.htaccess` é a configuração do servidor. Padrão para SPAs React:
+
+```apache
+# MIME types
+<IfModule mod_headers.c>
+  <FilesMatch "^sitemap\.xml$">
+    Header set Content-Type "application/xml; charset=UTF-8"
+  </FilesMatch>
+</IfModule>
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+
+  # 301: www → não-www (canônico — deve vir antes do fallback SPA)
+  RewriteCond %{HTTP_HOST} ^www\.seu-dominio\.com\.br$ [NC]
+  RewriteRule ^(.*)$ https://seu-dominio.com.br/$1 [R=301,L]
+
+  # Não redirecionar arquivos e diretórios reais
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  # Fallback SPA
+  RewriteRule ^ /index.html [L]
+</IfModule>
 ```
 
-There is no test runner configured in this project.
+---
 
-## Architecture
+## SEO
 
-**Stack:** React 18 + Vite SPA. Supabase handles auth, PostgreSQL database, and Edge Functions. Tailwind CSS + Radix UI for styling. `@` alias maps to `src/`.
+- Toda página de conteúdo deve ter `<link rel="canonical" href="https://www.penhora.app.br/caminho" />` via `react-helmet` apontando para o domínio **sem www**.
+- Páginas de resultado de busca/filtro dinâmico: `<meta name="robots" content="noindex, follow" />`.
+- O redirect www → não-www no `.htaccess` é obrigatório para evitar o aviso "Cópia sem página canônica selecionada pelo usuário" no Search Console.
+- Sitemap gerado automaticamente no build por `tools/generate-sitemap.js`.
 
-### Auth Flow (`src/contexts/SupabaseAuthContext.jsx`)
+---
 
-Central auth context wraps the entire app. Exposes: `signUp`, `signIn`, `signInWithGoogle`, `signInWithOtp`, `resetPassword`, `signOut`. The production domain is `https://go.penhora.app.br` (used as `emailRedirectTo` for all auth flows). Admin status is determined via `supabase.rpc('is_admin')`.
+## Código — regras gerais
 
-### Routing (`src/App.jsx`)
+- Sem comentários explicando o que o código faz — apenas quando o **porquê** é não óbvio.
+- Sem abstrações antecipadas: três linhas repetidas são melhores que uma abstração prematura.
+- Sem tratamento de erro para cenários impossíveis — confiar nas garantias do framework e do banco.
+- Validações acontecem **antes** de qualquer chamada a serviço externo pago.
+- Nunca gerar ou adivinhar URLs — usar apenas as fornecidas pelo usuário ou presentes no código.
 
-Three route tiers:
-- **Public** (`/`, `/benefits`, `/login`, `/signup`, etc.) — `Header` shown on landing pages but not on auth pages
-- **Authenticated** — wrapped in `<ProtectedRoute><DashboardLayout /></ProtectedRoute>`, covers `/dashboard`, `/processes/**`, `/calendar`, `/account`, `/team`, `/audit`, `/items/**`
-- **Admin-only** — wrapped in `<AdminRoute><DashboardLayout /></AdminRoute>`, covers `/admin`
+---
 
-### Supabase Client (`src/lib/customSupabaseClient.js`)
+## Componentes UI recorrentes
 
-Single client instance exported as both `default` and named `supabase`. The anon key and project URL are hardcoded (project: `hsvxxhvfmgzopkfyhuac`). All database operations go through this client directly from page components.
+- `shadcn/ui`: Button, Input, Card, Badge, Select, Accordion, AlertDialog, Tooltip — importar de `@/components/ui/`.
+- Ícones: `lucide-react`.
+- Animações: `framer-motion` (`motion.div`, `AnimatePresence`).
+- Toasts: `useToast` de `@/components/ui/use-toast`.
+- Rotas protegidas: `<ProtectedRoute />` wrappando rotas admin.
+- Auth context: `useAuth()` de `@/contexts/SupabaseAuthContext`.
 
-### Key Database Tables
+---
 
-- `processes` — main seizure records (owned by `user_id`)
-- `seized_items` — items linked to a process
-- `team_members` — collaboration: `owner_id`, `member_email`, `member_id`, `role`
-- `activity_logs` — audit trail written via `src/lib/logger.js` (`logActivity`)
-- `subscriptions` — plan limits (`seizure_limit`, `item_limit`)
+## Quando o usuário precisa agir externamente
 
-### External API Integrations (`src/lib/`)
+Sempre fornecer:
+1. O link direto (não o caminho genérico)
+2. A instrução exata (colar o arquivo X, executar o comando Y)
+3. O que verificar para confirmar que funcionou
 
-- **`cnjApi.js`** — CNJ DataJud public API (Brazilian court data) via `corsproxy.io` proxy, ElasticSearch queries for process lookup
-- **`visionApi.js`** — image/barcode recognition
-- **`eanApi.js`** — EAN barcode product lookup
-- **`adminApi.js`** — calls the `create-admin-user` Supabase Edge Function (requires service role key)
-
-### UI Components
-
-All Radix UI primitives are re-exported from `src/components/ui/` with Tailwind styling. Use existing components from that directory; do not add new UI libraries.
-
-### Dev-only Vite Plugins
-
-`plugins/visual-editor/` contains inline editing and selection mode plugins that only load in development (`isDev`). These are part of the Horizons platform and should not be modified.
+Exemplos de links úteis:
+- SQL Editor: `https://supabase.com/dashboard/project/<REF>/sql/new`
+- Edge Functions: `https://supabase.com/dashboard/project/<REF>/functions`
+- Auth settings: `https://supabase.com/dashboard/project/<REF>/auth/url-configuration`
+- GitHub Secrets: `https://github.com/<USER>/<REPO>/settings/secrets/actions`
+- Search Console: `https://search.google.com/search-console`
