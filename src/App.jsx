@@ -45,7 +45,6 @@ import CapturePhotoPage from '@/pages/items/CapturePhotoPage';
 import ManualEntryPage from '@/pages/items/ManualEntryPage';
 import CalendarPage from '@/pages/CalendarPage';
 import ReferralsPage from '@/pages/ReferralsPage';
-import Consent from '@/pages/oauth/Consent';
 
 const AppContent = () => {
   const location = useLocation();
@@ -59,10 +58,8 @@ const AppContent = () => {
     return location.pathname.startsWith(path);
   });
 
-  // Check if it's an authentication route (login/signup) or oauth
-  const isAuthRoute = location.pathname.startsWith('/login') || 
-                      location.pathname.startsWith('/signup') ||
-                      location.pathname.startsWith('/oauth');
+  const isAuthRoute = location.pathname.startsWith('/login') ||
+                      location.pathname.startsWith('/signup');
 
   // Render the Header only if it's a public route and not an auth route
   const shouldShowHeader = isPublicRoute && !isAuthRoute;
@@ -79,9 +76,6 @@ const AppContent = () => {
         <Route path="/termos-de-uso" element={<TermsOfUse />} />
         <Route path="/privacidade" element={<PrivacyPolicy />} />
         
-        {/* OAuth Routes */}
-        <Route path="/oauth/consent" element={<Consent />} />
-
         <Route element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/calendar" element={<CalendarPage />} />

@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -34,23 +35,41 @@ jobs:
         run: |
           sudo apt-get install -y lftp
 
-          LFTP_SETTINGS="set ftp:ssl-force true; set ftp:ssl-protect-data true; set ssl:verify-certificate false; set ftp:passive-mode true; set net:timeout 120; set net:max-retries 10; set net:reconnect-interval-base 5; set net:reconnect-interval-multiplier 1;"
+          # Connection settings — generous timeouts to handle Hostinger transient drops
+          LFTP_SETTINGS="
+            set ftp:ssl-force true;
+            set ftp:ssl-protect-data true;
+            set ssl:verify-certificate false;
+            set ftp:passive-mode true;
+            set ftp:use-feat false;
+            set ftp:prefer-epsv false;
+            set net:timeout 180;
+            set net:max-retries 15;
+            set net:reconnect-interval-base 8;
+            set net:reconnect-interval-multiplier 1;
+            set net:connection-limit 4;
+            set mirror:use-pget-n 4;
+          "
 
-          # Single session: mirror uploads assets/ before index.html (alphabetical order).
-          # Explicit put at the end guarantees index.html is always the last file written,
-          # so users never get new HTML pointing to assets that haven't arrived yet.
-          LFTP_CMD="mirror --reverse --delete --no-perms --verbose ./dist/ public_html/; put ./dist/index.html -o public_html/index.html; bye"
+          # assets/ uploaded before index.html so users never get stale HTML
+          # pointing to assets that haven't landed yet.
+          LFTP_CMD="mirror --reverse --delete --no-perms --verbose --ignore-time ./dist/ public_html/; put ./dist/index.html -o public_html/index.html; bye"
 
-          for attempt in 1 2 3; do
-            echo ">>> Deploy attempt $attempt/3"
+          MAX=6
+          WAIT=30
+          for attempt in $(seq 1 $MAX); do
+            echo ">>> Deploy attempt $attempt/$MAX"
             if lftp -u "u147485162.penhora.app.br,$FTP_PASSWORD" ftp://45.152.44.230 \
                  -e "$LFTP_SETTINGS $LFTP_CMD"; then
               echo ">>> Deploy successful on attempt $attempt"
               exit 0
             fi
-            echo ">>> Attempt $attempt failed. Waiting 15s before retry..."
-            sleep 15
+            if [ "$attempt" -lt "$MAX" ]; then
+              echo ">>> Attempt $attempt failed. Waiting ${WAIT}s before retry..."
+              sleep $WAIT
+              WAIT=$((WAIT + 15))
+            fi
           done
 
-          echo ">>> All 3 deploy attempts failed."
+          echo ">>> All $MAX deploy attempts failed."
           exit 1

@@ -41,7 +41,7 @@ export const AuthProvider = ({ children }) => {
         .eq('id', authUser.id)
         .maybeSingle();
 
-      const googleName =
+      const displayName =
         authUser.user_metadata?.full_name ||
         authUser.user_metadata?.name ||
         '';
@@ -50,10 +50,10 @@ export const AuthProvider = ({ children }) => {
         await supabase.from('users').insert({
           id: authUser.id,
           email: authUser.email,
-          name: googleName,
+          name: displayName,
         });
-      } else if (!existing.name && googleName) {
-        await supabase.from('users').update({ name: googleName }).eq('id', authUser.id);
+      } else if (!existing.name && displayName) {
+        await supabase.from('users').update({ name: displayName }).eq('id', authUser.id);
       }
     } catch (e) {
       console.error('Profile sync error:', e);
@@ -119,12 +119,7 @@ export const AuthProvider = ({ children }) => {
 
       await checkAdminStatus(session.user.email);
       await handleTeamMembership(session.user);
-      // Sync profile for OAuth users
-      const provider = session.user.app_metadata?.provider;
-      const providers = session.user.app_metadata?.providers ?? [];
-      if (provider === 'google' || providers.includes('google')) {
-        await syncUserProfile(session.user);
-      }
+      await syncUserProfile(session.user);
     } else {
       setIsAdmin(false);
       setTeamMembership(null);
@@ -170,17 +165,6 @@ export const AuthProvider = ({ children }) => {
     return { data, error };
   }, []);
 
-  const signInWithGoogle = useCallback(async () => {
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: SITE_URL,
-        queryParams: { access_type: 'offline', prompt: 'consent' },
-      },
-    });
-    return { data, error };
-  }, [SITE_URL]);
-
   const signInWithOtp = useCallback(async ({ email }) => {
     const { data, error } = await supabase.auth.signInWithOtp({
       email,
@@ -218,12 +202,11 @@ export const AuthProvider = ({ children }) => {
     effectiveOwnerId: teamMembership?.owner_id ?? user?.id ?? null,
     signUp,
     signIn,
-    signInWithGoogle,
     signInWithOtp,
     signOut,
     resetPassword,
     CUSTOM_DOMAIN,
-  }), [user, session, loading, isAdmin, teamMembership, signUp, signIn, signInWithGoogle, signInWithOtp, signOut, resetPassword, CUSTOM_DOMAIN]);
+  }), [user, session, loading, isAdmin, teamMembership, signUp, signIn, signInWithOtp, signOut, resetPassword, CUSTOM_DOMAIN]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

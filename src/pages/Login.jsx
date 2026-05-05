@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -7,83 +7,77 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { Helmet } from 'react-helmet-async';
-import { Loader2, ShieldX } from 'lucide-react';
+import { Loader2, ShieldX, Mail } from 'lucide-react';
 
 const logoSrc = "https://horizons-cdn.hostinger.com/d89750d7-1f5d-466f-8dd9-087252acee70/2d8010627a52ee48131ebed25f5ffc09.png";
 
 const Login = () => {
-  const { signIn, signInWithGoogle, resetPassword } = useAuth();
-  const navigate = useNavigate();
+  const { signInWithOtp } = useAuth();
   const { search } = useLocation();
   const isBlocked = new URLSearchParams(search).get('blocked') === '1';
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-  const [formData, setFormData] = useState({ email: '', password: '' });
-
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.id]: e.target.value });
-  };
-
-  const handleGoogleLogin = async () => {
-    setIsGoogleLoading(true);
-    try {
-      const { error } = await signInWithGoogle();
-      if (error) throw error;
-      // Redirect happens automatically
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Erro no login com Google",
-        description: error.message,
-      });
-      setIsGoogleLoading(false);
-    }
-  };
+  const [email, setEmail] = useState('');
+  const [sent, setSent] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!email) return;
     setIsLoading(true);
     try {
-      if (!formData.email || !formData.password) throw new Error("Email e senha são obrigatórios");
-      const { error } = await signIn({ email: formData.email, password: formData.password });
+      const { error } = await signInWithOtp({ email });
       if (error) throw error;
-      window.location.href = 'https://www.penhora.app.br/dashboard';
+      setSent(true);
     } catch (error) {
-      console.error(error);
       toast({
-        variant: "destructive",
-        title: "Erro no login",
-        description: error.message === "Invalid login credentials"
-          ? "Credenciais inválidas. Verifique seu email e senha."
-          : "Não foi possível realizar o login. Tente novamente.",
+        variant: 'destructive',
+        title: 'Erro ao enviar link',
+        description: error.message,
       });
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleForgotPassword = async (e) => {
-    e.preventDefault();
-    if (!formData.email) {
-      toast({ variant: 'destructive', title: 'Informe seu email', description: 'Preencha o campo de email antes de solicitar a redefinição de senha.' });
-      return;
-    }
-    try {
-      const { error } = await resetPassword(formData.email);
-      if (error) throw error;
-      toast({ title: 'Email enviado!', description: 'Verifique sua caixa de entrada para redefinir a senha.', duration: 6000 });
-    } catch (err) {
-      toast({ variant: 'destructive', title: 'Erro', description: err.message });
-    }
-  };
+  if (sent) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4 py-12">
+        <Helmet>
+          <title>Verifique seu email - Penhora.app.br</title>
+        </Helmet>
+        <Card className="w-full max-w-md">
+          <CardHeader className="space-y-1">
+            <Link to="/" className="flex justify-center mb-4">
+              <img src={logoSrc} alt="Penhora.app Logo" className="h-10 w-auto" />
+            </Link>
+            <CardTitle className="text-2xl font-bold text-center">Verifique seu email</CardTitle>
+            <CardDescription className="text-center">
+              Enviamos um link de acesso para <strong>{email}</strong>
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex gap-3 text-sm text-blue-800">
+              <Mail className="h-5 w-5 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="font-semibold mb-1">Link enviado!</p>
+                <p>Clique no link no seu email para acessar o sistema. Verifique também a caixa de spam.</p>
+              </div>
+            </div>
+            <Button variant="outline" className="w-full" onClick={() => setSent(false)}>
+              Usar outro email
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4 py-12">
       <Helmet>
         <title>Login - Penhora.app.br</title>
       </Helmet>
-      
+
       {isBlocked && (
         <div className="w-full max-w-md mb-4 flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700">
           <ShieldX className="h-5 w-5 mt-0.5 shrink-0" />
@@ -94,78 +88,33 @@ const Login = () => {
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
           <Link to="/" className="flex justify-center mb-4">
-             <img src={logoSrc} alt="Penhora.app Logo" className="h-10 w-auto" />
+            <img src={logoSrc} alt="Penhora.app Logo" className="h-10 w-auto" />
           </Link>
           <CardTitle className="text-2xl font-bold text-center">Acesse sua conta</CardTitle>
           <CardDescription className="text-center">
-            Entre com seu email e senha ou use sua conta Google
+            Informe seu email e enviaremos um link de acesso
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4">
-            <Button variant="outline" className="w-full" onClick={handleGoogleLogin} disabled={isLoading || isGoogleLoading}>
-              {isGoogleLoading ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <svg className="mr-2 h-4 w-4" aria-hidden="true" focusable="false" data-prefix="fab" data-icon="google" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 488 512">
-                  <path fill="currentColor" d="M488 261.8C488 403.3 391.1 504 248 504 110.8 504 0 393.2 0 256S110.8 8 248 8c66.8 0 123 24.5 166.3 64.9l-67.5 64.9C258.5 52.6 94.3 116.6 94.3 256c0 86.5 69.1 156.6 153.7 156.6 98.2 0 135-70.4 140.8-106.9H248v-85.3h236.1c2.3 12.7 3.9 24.9 3.9 41.4z"></path>
-                </svg>
-              )}
-              Entrar com Google
-            </Button>
-            
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">
-                  Ou continue com email
-                </span>
-              </div>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="seu@email.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                autoFocus
+              />
             </div>
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input 
-                  id="email" 
-                  type="email" 
-                  placeholder="seu@email.com" 
-                  value={formData.email}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="password">Senha</Label>
-                  <Link
-                    to="#"
-                    onClick={handleForgotPassword}
-                    className="text-xs text-blue-600 hover:underline"
-                  >
-                    Esqueceu a senha?
-                  </Link>
-                </div>
-                <Input
-                  id="password"
-                  type="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
-
-              <Button type="submit" className="w-full" disabled={isLoading || isGoogleLoading}>
-                {isLoading ? (
-                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Entrando…</>
-                ) : 'Entrar'}
-              </Button>
-            </form>
-          </div>
-
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Enviando…</>
+              ) : 'Enviar link de acesso'}
+            </Button>
+          </form>
         </CardContent>
         <CardFooter className="flex justify-center border-t p-4">
           <p className="text-sm text-slate-500">
