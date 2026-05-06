@@ -1,13 +1,5 @@
 import { supabase } from '@/lib/customSupabaseClient';
 
-/**
- * Uploads an image to the analyze-image edge function using the custom domain.
- * This bypasses the default supabase.functions.invoke URL construction to ensure
- * we are hitting https://go.penhora.app.br/functions/v1/analyze-image
- * 
- * @param {File} file - The image file to analyze
- * @returns {Promise<Object>} - The analysis result { description, brand, characteristics }
- */
 export async function analyzeImage(file) {
   try {
     const formData = new FormData();
@@ -18,8 +10,7 @@ export async function analyzeImage(file) {
 
     if (!token) throw new Error('User not authenticated');
 
-    // Use the custom domain explicitly
-    const response = await fetch('https://go.penhora.app.br/functions/v1/analyze-image', {
+    const response = await fetch('https://hsvxxhvfmgzopkfyhuac.supabase.co/functions/v1/analyze-image', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`

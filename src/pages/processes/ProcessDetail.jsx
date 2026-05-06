@@ -85,9 +85,8 @@ const DIL_STYLE = {
 const getDilStyle = (status) =>
     DIL_STYLE[status] || { badge: 'bg-slate-100 text-slate-500', dot: 'bg-slate-300', row: 'bg-white border-slate-100' };
 
-// Normalize photo URLs: items saved before the domain-replacement bug was fixed
-// may have 'go.penhora.app.br' as the host (the Hostinger frontend domain, not Supabase).
-// Convert those back to the actual Supabase Storage origin so images load correctly.
+// Normalize photo URLs: items saved while the old custom domain was active may point
+// to the decommissioned host. Convert to the canonical Supabase Storage origin.
 const normalizePhotoUrl = (url) => {
     if (!url) return url;
     return url.replace('https://go.penhora.app.br/storage/', 'https://hsvxxhvfmgzopkfyhuac.supabase.co/storage/');
