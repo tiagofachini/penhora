@@ -6,25 +6,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-function generatePassword(): string {
-  const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
-  const lower = 'abcdefghjkmnpqrstuvwxyz';
-  const digits = '23456789';
-  const symbols = '!@#$%&*';
-  const all = upper + lower + digits + symbols;
-
-  const pwd: string[] = [
-    upper[Math.floor(Math.random() * upper.length)],
-    lower[Math.floor(Math.random() * lower.length)],
-    digits[Math.floor(Math.random() * digits.length)],
-    symbols[Math.floor(Math.random() * symbols.length)],
-  ];
-  for (let i = 4; i < 12; i++) {
-    pwd.push(all[Math.floor(Math.random() * all.length)]);
-  }
-  return pwd.sort(() => Math.random() - 0.5).join('');
-}
-
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -55,12 +36,9 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const password = generatePassword();
-
     // Criar usuário via admin API (sem email de confirmação do Supabase)
     const { data: userData, error: userError } = await supabaseAdmin.auth.admin.createUser({
       email,
-      password,
       email_confirm: true,
       user_metadata: { name, phone: phone || '' },
     });
@@ -72,7 +50,25 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Enviar email de boas-vindas com a senha via Resend
+    // Gerar magic link para o primeiro acesso
+    const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
+      type: 'magiclink',
+      email,
+      options: {
+        redirectTo: 'https://www.penhora.app.br/dashboard',
+      },
+    });
+
+    if (linkError) {
+      console.error('Magic link generation error:', linkError);
+      return new Response(
+        JSON.stringify({ error: `Falha ao gerar link de acesso: ${linkError.message}` }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const accessLink = linkData.properties?.action_link ?? 'https://www.penhora.app.br/login';
+
     const resendApiKey = Deno.env.get('RESEND_API_KEY');
     if (!resendApiKey) {
       console.error('RESEND_API_KEY not configured — welcome email skipped');
@@ -98,20 +94,18 @@ Deno.serve(async (req: Request) => {
               <tr>
                 <td style="padding:40px 32px;">
                   <h2 style="color:#1e293b;margin:0 0 16px;">Bem-vindo, ${name}!</h2>
-                  <p style="color:#475569;margin:0 0 24px;">Sua conta foi criada com sucesso. Abaixo está sua senha de acesso:</p>
-                  <div style="background:#0f172a;border-radius:10px;padding:24px;text-align:center;margin:0 0 24px;">
-                    <p style="color:#94a3b8;font-size:11px;text-transform:uppercase;letter-spacing:2px;margin:0 0 8px;">Sua senha de acesso</p>
-                    <p style="color:#ffffff;font-family:monospace;font-size:26px;font-weight:bold;letter-spacing:6px;margin:0;">${password}</p>
-                  </div>
-                  <p style="color:#475569;margin:0 0 8px;"><strong>Email:</strong> ${email}</p>
+                  <p style="color:#475569;margin:0 0 24px;">Sua conta foi criada com sucesso. Clique no botão abaixo para acessar o sistema:</p>
                   <div style="margin:32px 0;text-align:center;">
-                    <a href="https://www.penhora.app.br/login"
+                    <a href="${accessLink}"
                        style="background:#1e40af;color:#ffffff;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:16px;">
                       Acessar o Sistema
                     </a>
                   </div>
-                  <p style="color:#94a3b8;font-size:13px;border-top:1px solid #e2e8f0;padding-top:20px;margin:0;">
-                    Por segurança, recomendamos alterar sua senha após o primeiro acesso.
+                  <p style="color:#475569;margin:0 0 8px;"><strong>Email de acesso:</strong> ${email}</p>
+                  <p style="color:#94a3b8;font-size:13px;border-top:1px solid #e2e8f0;padding-top:20px;margin:24px 0 0;">
+                    Este link é de uso único e expira em 24 horas. Caso expire, acesse
+                    <a href="https://www.penhora.app.br/login" style="color:#1e40af;">penhora.app.br/login</a>
+                    e solicite um novo link pelo seu email.
                   </p>
                 </td>
               </tr>
@@ -136,7 +130,7 @@ Deno.serve(async (req: Request) => {
       body: JSON.stringify({
         from: 'Penhora.app <noreply@penhora.app.br>',
         to: email,
-        subject: 'Sua senha de acesso ao Penhora.app',
+        subject: 'Seu acesso ao Penhora.app',
         html: emailHtml,
       }),
     });

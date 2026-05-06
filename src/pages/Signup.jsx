@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
 import { Helmet } from 'react-helmet-async';
-import { Loader2, Check, Mail, KeyRound } from 'lucide-react';
+import { Loader2, Check, Mail } from 'lucide-react';
 
 const formatPhone = (value) => {
   const digits = value.replace(/\D/g, '').slice(0, 11);
@@ -91,7 +91,7 @@ const Signup = () => {
             </div>
             <CardTitle className="text-2xl font-bold text-center">Conta criada!</CardTitle>
             <CardDescription className="text-center">
-              Sua senha de acesso foi enviada por email.
+              Enviamos um link de acesso para o seu email.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -100,8 +100,8 @@ const Signup = () => {
               <div>
                 <p className="font-semibold mb-1">Verifique seu email</p>
                 <p>
-                  Enviamos sua senha de acesso para <strong>{successEmail}</strong>.
-                  Verifique também a caixa de spam.
+                  Enviamos um link de acesso para <strong>{successEmail}</strong>.
+                  Clique no link para entrar. Verifique também a caixa de spam.
                 </p>
               </div>
             </div>
@@ -136,14 +136,6 @@ const Signup = () => {
         </CardHeader>
         <CardContent>
           <div className="grid gap-4">
-            {/* Aviso sobre senha automática */}
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex gap-2 text-sm text-amber-800">
-              <KeyRound className="h-4 w-4 mt-0.5 flex-shrink-0" />
-              <p>
-                Não é necessário criar uma senha. Após o cadastro, enviaremos uma senha segura para o seu email.
-              </p>
-            </div>
-
             <form onSubmit={onSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Nome Completo</Label>
