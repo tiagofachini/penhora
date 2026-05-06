@@ -4,7 +4,6 @@ import { motion } from 'framer-motion';
 import { Menu, X, LogOut, FileText, UserCircle } from 'lucide-react'; 
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
-import { useToast } from '@/components/ui/use-toast';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,8 +19,7 @@ const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, signOut } = useAuth(); 
-  const { toast } = useToast();
+  const { user, signOut } = useAuth();
 
   const navItems = [
     { name: 'Home', path: '/' },
@@ -29,20 +27,8 @@ const Header = () => {
   ];
 
   const handleLogout = async () => {
-    const { error } = await signOut();
-    if (!error) {
-      toast({
-        title: "Logout realizado",
-        description: "Você foi desconectado com sucesso.",
-      });
-      navigate('/');
-    } else {
-      toast({
-        title: "Erro no logout",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
+    await signOut();
+    navigate('/');
   };
 
   const isActive = (path) => location.pathname === path || (path !== '/' && location.pathname.startsWith(path));
