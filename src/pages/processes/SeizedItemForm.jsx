@@ -259,87 +259,72 @@ const SeizedItemForm = ({ isOpen, onOpenChange, processId, item, onSuccess, init
   useEffect(() => {
     let stream = null;
     const startCamera = async () => {
-        if (isCameraOpen) {
-            try {
-                // First explicitly request permission
-                await navigator.mediaDevices.getUserMedia({ video: true });
-                // Then get the stream with specific constraints
-                stream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { facingMode: 'environment' } 
-                });
-                
-                if (videoRef.current) {
-                    videoRef.current.srcObject = stream;
-                    // Play is required for some browsers
-                    await videoRef.current.play();
-                }
-            } catch (err) {
-                console.error("Camera Error: ", err);
-                toast({ 
-                    variant: 'destructive', 
-                    title: "Erro na câmera", 
-                    description: "Não foi possível acessar a câmera. Verifique as permissões do navegador." 
-                });
-                setIsCameraOpen(false);
+        if (!isCameraOpen) return;
+        try {
+            // ideal facingMode works on both mobile (back cam) and desktop (any cam)
+            stream = await navigator.mediaDevices.getUserMedia({ 
+                video: { facingMode: { ideal: 'environment' } } 
+            });
+            if (videoRef.current) {
+                videoRef.current.srcObject = stream;
+                await videoRef.current.play();
             }
+        } catch (err) {
+            console.error("Camera Error: ", err);
+            toast({ 
+                variant: 'destructive', 
+                title: "Erro na câmera", 
+                description: "Não foi possível acessar a câmera. Verifique as permissões do navegador." 
+            });
+            setIsCameraOpen(false);
         }
     };
 
-    if (isCameraOpen) {
-        startCamera();
-    }
+    if (isCameraOpen) startCamera();
     
     return () => { 
-        if (stream) {
-            stream.getTracks().forEach(track => track.stop());
-        }
-        if (videoRef.current) {
-            videoRef.current.srcObject = null;
-        }
+        if (stream) stream.getTracks().forEach(t => t.stop());
+        if (videoRef.current) videoRef.current.srcObject = null;
     };
   }, [isCameraOpen, toast]);
 
-  // Scanner Logic
+  // Scanner Logic — uses Html5Qrcode directly for full Portuguese UI control
   useEffect(() => {
-    if (isScanning && isOpen) {
-        // Small delay to ensure DOM is ready
-        const timer = setTimeout(() => {
-            const readerElement = document.getElementById("reader");
-            if (readerElement && !scannerRef.current) {
-                try {
-                     const scanner = new Html5QrcodeScanner("reader", { 
-                         fps: 10, 
-                         qrbox: { width: 250, height: 250 },
-                         aspectRatio: 1.0,
-                         showTorchButtonIfSupported: true,
-                         rememberLastUsedCamera: true
-                     }, false);
-                     
-                     scannerRef.current = scanner;
+    if (!isScanning || !isOpen) return;
 
-                     scanner.render((decodedText) => {
-                         setFormData(prev => ({...prev, barcode: decodedText}));
-
-                         if(scannerRef.current) {
-                             scannerRef.current.clear().catch(e => console.warn(e));
-                             scannerRef.current = null;
-                         }
-                         setIsScanning(false);
-                         handleBarcodeLookup(decodedText);
-                     }, (error) => {
-                         // Scanning errors are common while searching, no need to log constantly
-                     });
-                } catch(e) {
-                    console.error("Scanner init error", e);
-                }
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+        if (cancelled || scannerRef.current) return;
+        try {
+            const qr = new Html5Qrcode('qr-reader');
+            scannerRef.current = qr;
+            await qr.start(
+                { facingMode: { ideal: 'environment' } },
+                { fps: 10, qrbox: { width: 250, height: 250 } },
+                (decodedText) => {
+                    setFormData(prev => ({ ...prev, barcode: decodedText }));
+                    qr.stop().catch(() => {});
+                    scannerRef.current = null;
+                    setIsScanning(false);
+                    handleBarcodeLookup(decodedText);
+                },
+                () => {} // per-frame errors are expected, ignore
+            );
+        } catch (err) {
+            if (!cancelled) {
+                console.error('Scanner error', err);
+                toast({ variant: 'destructive', title: 'Erro ao iniciar scanner', description: 'Verifique as permissões da câmera.' });
+                scannerRef.current = null;
+                setIsScanning(false);
             }
-        }, 300);
-        return () => clearTimeout(timer);
-    }
-    
+        }
+    }, 300);
+
     return () => {
+        cancelled = true;
+        clearTimeout(timer);
         if (scannerRef.current) {
-            scannerRef.current.clear().catch(e => console.warn("Scanner clear error", e));
+            scannerRef.current.stop().catch(() => {});
             scannerRef.current = null;
         }
     };
@@ -579,18 +564,24 @@ const SeizedItemForm = ({ isOpen, onOpenChange, processId, item, onSuccess, init
                 </div>
             </div>
         ) : isScanning ? (
-             <div className="flex flex-col min-h-[400px] bg-black rounded-lg overflow-hidden relative p-4 items-center justify-center">
-                <div id="reader" className="w-full h-full bg-white rounded [&_#reader__dashboard_section_csr_span]:!hidden [&_#reader__dashboard_section_swaplink]:!hidden">
-                    <style>{`
-                        #reader__scan_region { background: white; }
-                        #reader__dashboard_section_csr button { background-color: #2563eb; color: white; padding: 8px 16px; border-radius: 6px; border: none; font-weight: 500; cursor: pointer; }
-                        #reader__dashboard_section_csr button:hover { background-color: #1d4ed8; }
-                        #reader select { padding: 8px; border-radius: 4px; border: 1px solid #e2e8f0; margin-bottom: 10px; width: 100%; }
-                    `}</style>
-                </div>
-                <div className="absolute bottom-4 z-10 w-full flex justify-center flex-col items-center gap-2">
-                     <p className="text-white text-sm bg-black/50 px-3 py-1 rounded">Aponte a câmera para o código de barras</p>
-                     <Button variant="outline" onClick={() => setIsScanning(false)} className="bg-white/90"><X className="mr-2 h-4 w-4"/> Cancelar Escaneamento</Button>
+            <div className="flex flex-col rounded-lg overflow-hidden border border-slate-200">
+                <style>{`
+                    #qr-reader { width: 100%; background: #000; }
+                    #qr-reader video { width: 100%; display: block; }
+                    #qr-reader__scan_region { background: #000; }
+                    #qr-reader__dashboard { display: none !important; }
+                `}</style>
+                <div id="qr-reader" />
+                <div className="bg-slate-800 p-4 flex flex-col gap-3 items-center">
+                    <p className="text-white text-sm text-center">
+                        Aponte a câmera para o código de barras ou QR Code
+                    </p>
+                    <Button variant="outline" onClick={() => {
+                        if (scannerRef.current) { scannerRef.current.stop().catch(() => {}); scannerRef.current = null; }
+                        setIsScanning(false);
+                    }} className="bg-white/90 w-full">
+                        <X className="mr-2 h-4 w-4"/> Cancelar Escaneamento
+                    </Button>
                 </div>
             </div>
         ) : (
