@@ -53,7 +53,8 @@ const SeizedItemForm = ({ isOpen, onOpenChange, processId, item, onSuccess, init
   });
 
   const [processes, setProcesses] = useState([]);
-  const [diligences, setDiligences] = useState([]); 
+  const [diligences, setDiligences] = useState([]);
+  const [brandSuggestions, setBrandSuggestions] = useState([]);
   const [openCombobox, setOpenCombobox] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(false);
@@ -105,7 +106,7 @@ const SeizedItemForm = ({ isOpen, onOpenChange, processId, item, onSuccess, init
       return `${date} - ${status} - ${locationStr}`;
   };
 
-  // 1. Fetch available processes for the dropdown
+  // 1. Fetch available processes and distinct brands for the dropdowns
   useEffect(() => {
     const fetchProcesses = async () => {
       if (!user || !isOpen) return;
@@ -114,14 +115,31 @@ const SeizedItemForm = ({ isOpen, onOpenChange, processId, item, onSuccess, init
           .from('processes')
           .select('id, process_number')
           .eq('user_id', user.id);
-          
         if (error) throw error;
         setProcesses(data || []);
       } catch (error) {
         console.error('Error fetching processes:', error);
       }
     };
+
+    const fetchBrands = async () => {
+      if (!user || !isOpen) return;
+      try {
+        const { data } = await supabase
+          .from('seized_items')
+          .select('brand')
+          .eq('user_id', user.id)
+          .not('brand', 'is', null)
+          .neq('brand', '');
+        const unique = [...new Set((data || []).map(r => r.brand).filter(Boolean))].sort();
+        setBrandSuggestions(unique);
+      } catch (e) {
+        console.error('Error fetching brands:', e);
+      }
+    };
+
     fetchProcesses();
+    fetchBrands();
   }, [user, isOpen]);
 
   // 2. Initialize Form Data when Modal Opens
@@ -377,16 +395,11 @@ const SeizedItemForm = ({ isOpen, onOpenChange, processId, item, onSuccess, init
 
           const result = await analyzeImage(file);
 
-          const modelNote = result.model ? `Modelo: ${result.model}` : '';
-          const aiChars = [modelNote, result.characteristics].filter(Boolean).join('\n');
-
           setFormData(prev => ({
               ...prev,
               item_description: result.description || prev.item_description,
               brand: result.brand || prev.brand,
-              characteristics: aiChars
-                  ? (prev.characteristics ? prev.characteristics + '\n' + aiChars : aiChars)
-                  : prev.characteristics,
+              characteristics: result.characteristics || prev.characteristics,
           }));
 
           // If AI spotted a barcode in the photo and we don't have one yet
@@ -395,7 +408,7 @@ const SeizedItemForm = ({ isOpen, onOpenChange, processId, item, onSuccess, init
               handleBarcodeLookup(result.barcode);
           }
 
-          const identified = result.description || result.brand || result.model || result.characteristics;
+          const identified = result.description || result.brand || result.characteristics;
           if (identified) {
               toast({ title: "Análise concluída", description: "Campos preenchidos automaticamente. Revise antes de salvar.", className: "bg-blue-50 border-blue-200" });
           } else {
@@ -691,6 +704,32 @@ const SeizedItemForm = ({ isOpen, onOpenChange, processId, item, onSuccess, init
                 )}
 
                 <div className="grid grid-cols-4 items-center gap-4">
+                    <Label className="text-right">Nome do item/produto</Label>
+                    <div className="col-span-3 relative">
+                        <Input name="item_description" value={formData.item_description} onChange={handleChange} required disabled={analyzing} />
+                        {analyzing && <Loader2 className="absolute right-3 top-2.5 h-4 w-4 animate-spin"/>}
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-4 items-center gap-4">
+                    <Label className="text-right">Marca</Label>
+                    <div className="col-span-3">
+                        <Input
+                            name="brand"
+                            value={formData.brand}
+                            onChange={handleChange}
+                            disabled={analyzing}
+                            list="brand-suggestions"
+                            autoComplete="off"
+                            placeholder="Digite ou selecione"
+                        />
+                        <datalist id="brand-suggestions">
+                            {brandSuggestions.map(b => <option key={b} value={b} />)}
+                        </datalist>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-4 items-center gap-4">
                     <Label className="text-right">Código de Barras</Label>
                     <div className="col-span-3 flex gap-2">
                         <Input name="barcode" value={formData.barcode} onChange={handleChange} placeholder="Opcional" />
@@ -703,17 +742,12 @@ const SeizedItemForm = ({ isOpen, onOpenChange, processId, item, onSuccess, init
                     </div>
                 </div>
 
-                <div className="grid grid-cols-4 items-center gap-4">
-                    <Label className="text-right">Descrição</Label>
-                    <div className="col-span-3 relative">
-                        <Input name="item_description" value={formData.item_description} onChange={handleChange} required disabled={analyzing} />
-                        {analyzing && <Loader2 className="absolute right-3 top-2.5 h-4 w-4 animate-spin"/>}
-                    </div>
-                </div>
-
-                <div className="grid grid-cols-4 items-center gap-4">
-                    <Label className="text-right">Marca</Label>
-                    <Input name="brand" value={formData.brand} onChange={handleChange} disabled={analyzing} className="col-span-3" />
+                <div className="grid grid-cols-4 items-start gap-4">
+                    <Label className="text-right pt-2">
+                        <span>Descrição do item/produto</span>
+                        {analyzing && <span className="block text-blue-600 text-xs animate-pulse flex items-center mt-1"><Sparkles className="w-3 h-3 mr-1"/> IA analisando...</span>}
+                    </Label>
+                    <Textarea name="characteristics" value={formData.characteristics} onChange={handleChange} className="col-span-3" rows={4} disabled={analyzing} placeholder="A IA preencherá este campo ao adicionar uma foto. Você também pode escrever manualmente." />
                 </div>
 
                 <div className="grid grid-cols-4 items-center gap-4">
@@ -739,11 +773,6 @@ const SeizedItemForm = ({ isOpen, onOpenChange, processId, item, onSuccess, init
                 <div className="grid grid-cols-4 items-center gap-4">
                     <Label className="text-right">Valor (R$)</Label>
                     <Input name="display_valuation" value={formData.display_valuation} onChange={handleCurrencyChange} className="col-span-3" placeholder="R$ 0,00" />
-                </div>
-
-                <div className="grid grid-cols-4 items-start gap-4">
-                    <Label className="text-right pt-2">Detalhes</Label>
-                    <Textarea name="characteristics" value={formData.characteristics} onChange={handleChange} className="col-span-3" rows={3} disabled={analyzing} />
                 </div>
 
                 <DialogFooter>

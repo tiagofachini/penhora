@@ -56,7 +56,7 @@ Responda APENAS com o JSON válido, sem explicações:
   "description": "nome completo do produto (ex: Smartphone Samsung Galaxy A54 128GB)",
   "brand": "marca do produto",
   "model": "modelo específico (ex: Galaxy A54, iPhone 15 Pro, Notebook Ideapad 3)",
-  "characteristics": "características principais separadas por vírgula (cor, capacidade, tamanho, etc.)",
+  "characteristics": "descrição técnica detalhada do produto em texto corrido, entre 150 e 500 caracteres, abordando: tipo do item, cor, material ou acabamento aparente, dimensões ou porte estimados, estado de conservação visível e qualquer informação relevante para fins de inventário ou perícia judicial. Não use listas ou marcadores, apenas texto corrido.",
   "barcode": "código de barras ou QR Code se visível na imagem, caso contrário null"
 }`,
             },
