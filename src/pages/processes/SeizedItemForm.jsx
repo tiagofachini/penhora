@@ -628,28 +628,34 @@ const SeizedItemForm = ({ isOpen, onOpenChange, processId, item, onSuccess, init
                 <div className="grid grid-cols-4 items-center gap-4">
                     <Label className="text-right">Processo <span className="text-red-500">*</span></Label>
                     <div className="col-span-3">
-                        <Popover open={openCombobox} onOpenChange={setOpenCombobox}>
-                            <PopoverTrigger asChild>
-                                <Button variant="outline" role="combobox" className="w-full justify-between">
-                                    {formData.process_id ? selectedProcessLabel : "Selecione..."}
-                                    <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-[400px] p-0" align="start">
-                                <div className="flex items-center border-b px-3">
-                                    <Search className="mr-2 h-4 w-4 opacity-50" />
-                                    <input className="flex h-11 w-full rounded-md bg-transparent text-sm outline-none" placeholder="Buscar..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-                                </div>
-                                <div className="max-h-[200px] overflow-y-auto p-1">
-                                    {filteredProcesses.map(p => (
-                                        <div key={p.id} className={cn("rounded-sm px-2 py-1.5 text-sm cursor-pointer hover:bg-muted", formData.process_id === p.id && "bg-muted")} onClick={() => { setFormData(prev => ({ ...prev, process_id: p.id })); setOpenCombobox(false); }}>
-                                            <Check className={cn("mr-2 h-4 w-4 inline", formData.process_id === p.id ? "opacity-100" : "opacity-0")} />
-                                            {p.process_number}
-                                        </div>
-                                    ))}
-                                </div>
-                            </PopoverContent>
-                        </Popover>
+                        {processId ? (
+                            <div className="flex h-10 items-center rounded-md border border-input bg-muted/50 px-3 text-sm text-muted-foreground select-none">
+                                {selectedProcessLabel}
+                            </div>
+                        ) : (
+                            <Popover open={openCombobox} onOpenChange={setOpenCombobox}>
+                                <PopoverTrigger asChild>
+                                    <Button variant="outline" role="combobox" className="w-full justify-between">
+                                        {formData.process_id ? selectedProcessLabel : "Selecione..."}
+                                        <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-[400px] p-0" align="start">
+                                    <div className="flex items-center border-b px-3">
+                                        <Search className="mr-2 h-4 w-4 opacity-50" />
+                                        <input className="flex h-11 w-full rounded-md bg-transparent text-sm outline-none" placeholder="Buscar..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                                    </div>
+                                    <div className="max-h-[200px] overflow-y-auto p-1">
+                                        {filteredProcesses.map(p => (
+                                            <div key={p.id} className={cn("rounded-sm px-2 py-1.5 text-sm cursor-pointer hover:bg-muted", formData.process_id === p.id && "bg-muted")} onClick={() => { setFormData(prev => ({ ...prev, process_id: p.id })); setOpenCombobox(false); }}>
+                                                <Check className={cn("mr-2 h-4 w-4 inline", formData.process_id === p.id ? "opacity-100" : "opacity-0")} />
+                                                {p.process_number}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </PopoverContent>
+                            </Popover>
+                        )}
                     </div>
                 </div>
 
@@ -657,7 +663,11 @@ const SeizedItemForm = ({ isOpen, onOpenChange, processId, item, onSuccess, init
                      <div className="grid grid-cols-4 items-center gap-4">
                         <Label className="text-right">Diligência <span className="text-red-500">*</span></Label>
                         <div className="col-span-3">
-                            {hasDiligences ? (
+                            {diligenceId ? (
+                                <div className="flex h-10 items-center rounded-md border border-input bg-muted/50 px-3 text-sm text-muted-foreground select-none">
+                                    {(() => { const d = diligences.find(x => x.id === diligenceId); return d ? getDiligenceLabel(d) : '…'; })()}
+                                </div>
+                            ) : hasDiligences ? (
                                 <Select value={formData.diligence_id} onValueChange={handleDiligenceChange}>
                                     <SelectTrigger>
                                         <SelectValue placeholder="Selecione a diligência" />
