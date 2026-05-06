@@ -615,75 +615,126 @@ const Home = () => {
                 </motion.div>
               </div>
 
-              {/* Hero mockup */}
+              {/* Hero mockup — fiel ao Dashboard real */}
               <div className="lg:w-1/2 w-full">
                 <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.2 }} className="relative">
-                  <div className="bg-white rounded-xl shadow-2xl border border-border overflow-hidden">
-                    <div className="bg-muted border-b border-border px-4 py-3 flex items-center gap-2">
+                  <div className="bg-slate-50 rounded-2xl shadow-2xl border border-border overflow-hidden">
+
+                    {/* Browser chrome */}
+                    <div className="bg-white border-b border-border px-4 py-2.5 flex items-center gap-2">
                       <div className="flex gap-1.5">
-                        <div className="w-3 h-3 rounded-full bg-red-400" />
-                        <div className="w-3 h-3 rounded-full bg-accent" />
-                        <div className="w-3 h-3 rounded-full bg-secondary" />
+                        <div className="w-2.5 h-2.5 rounded-full bg-red-400" />
+                        <div className="w-2.5 h-2.5 rounded-full bg-amber-400" />
+                        <div className="w-2.5 h-2.5 rounded-full bg-green-400" />
                       </div>
-                      <div className="ml-4 bg-white border border-border rounded-md px-3 py-1 text-xs text-muted-foreground flex-1">
+                      <div className="ml-3 bg-slate-100 border border-border rounded px-3 py-0.5 text-[11px] text-muted-foreground flex-1">
                         penhora.app.br/dashboard
                       </div>
                     </div>
-                    <div className="flex h-[400px]">
-                      <div className="w-56 bg-muted/30 border-r border-border p-4 hidden md:block">
-                        <div className="flex items-center gap-2 mb-8">
-                          <img src={logoSrc} alt="Penhora.app" className="h-7 w-auto" />
-                          <span className="font-bold text-sm text-slate-800">Penhora.app.br</span>
+
+                    {/* App shell */}
+                    <div className="flex" style={{ height: 420 }}>
+
+                      {/* Sidebar */}
+                      <div className="w-44 bg-white border-r border-border p-3 shrink-0 hidden md:flex flex-col gap-1">
+                        <div className="flex items-center gap-1.5 mb-5 px-1 pt-1">
+                          <img src={logoSrc} alt="" className="h-5 w-auto" />
+                          <span className="font-bold text-[11px] text-slate-700 leading-tight">Penhora.app.br</span>
                         </div>
-                        <div className="space-y-1">
-                          <div className="bg-primary/10 text-primary px-3 py-2 rounded-md text-sm font-medium flex items-center gap-3">
-                            <LayoutDashboard className="h-4 w-4" /> Dashboard
+                        {[
+                          { icon: LayoutDashboard, label: 'Dashboard',  active: true  },
+                          { icon: FileText,        label: 'Processos',  active: false },
+                          { icon: Camera,          label: 'Bens',       active: false },
+                          { icon: Calendar,        label: 'Agenda',     active: false },
+                        ].map(({ icon: Icon, label, active }) => (
+                          <div key={label} className={`flex items-center gap-2 px-2 py-1.5 rounded-md text-[11px] font-medium ${active ? 'bg-blue-50 text-blue-700' : 'text-slate-500'}`}>
+                            <Icon className="h-3.5 w-3.5 shrink-0" /> {label}
                           </div>
-                          <div className="text-muted-foreground px-3 py-2 rounded-md text-sm font-medium flex items-center gap-3">
-                            <FileText className="h-4 w-4" /> Processos
-                          </div>
-                          <div className="text-muted-foreground px-3 py-2 rounded-md text-sm font-medium flex items-center gap-3">
-                            <Camera className="h-4 w-4" /> Bens
-                          </div>
-                          <div className="text-muted-foreground px-3 py-2 rounded-md text-sm font-medium flex items-center gap-3">
-                            <Calendar className="h-4 w-4" /> Agenda
-                          </div>
-                        </div>
+                        ))}
                       </div>
-                      <div className="flex-1 p-6 bg-white overflow-hidden">
-                        <div className="flex justify-between items-center mb-6">
-                          <h3 className="font-bold text-primary text-lg">Visão Geral</h3>
-                          <div className="w-8 h-8 rounded-full bg-muted" />
+
+                      {/* Main content */}
+                      <div className="flex-1 overflow-hidden p-4 flex flex-col gap-3">
+
+                        {/* Page header */}
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="text-sm font-bold text-slate-800">Olá, Dr. João Silva!</div>
+                            <div className="text-[10px] text-slate-400">Resumo das suas atividades</div>
+                          </div>
+                          <div className="bg-blue-600 text-white text-[10px] font-bold px-2.5 py-1.5 rounded-lg flex items-center gap-1">
+                            <span className="text-base leading-none font-light">+</span> Nova Penhora
+                          </div>
                         </div>
-                        <div className="grid grid-cols-3 gap-3 mb-5">
+
+                        {/* Stat cards row */}
+                        <div className="grid grid-cols-4 gap-2">
                           {[
-                            { label: 'Processos', val: '24', color: 'text-primary' },
-                            { label: 'Bens Avaliados', val: '156', color: 'text-secondary' },
-                            { label: 'Total', val: 'R$ 2,4M', color: 'text-primary' },
+                            { label: 'Processos',    val: '12',       color: 'text-blue-600',   bg: 'bg-blue-50'   },
+                            { label: 'Diligências',  val: '8',        color: 'text-green-600',  bg: 'bg-green-50'  },
+                            { label: 'Bens',         val: '47',       color: 'text-amber-600',  bg: 'bg-amber-50'  },
+                            { label: 'Total',        val: 'R$ 94k',   color: 'text-purple-600', bg: 'bg-purple-50' },
                           ].map((s, i) => (
-                            <div key={i} className="bg-white border border-border rounded-lg p-3 shadow-sm">
-                              <div className="text-[10px] text-muted-foreground mb-1">{s.label}</div>
-                              <div className={`text-base font-bold ${s.color}`}>{s.val}</div>
+                            <div key={i} className="bg-white rounded-lg border border-border p-2 shadow-sm">
+                              <div className="text-[8px] text-slate-400 mb-0.5">{s.label}</div>
+                              <div className={`text-sm font-bold ${s.color}`}>{s.val}</div>
                             </div>
                           ))}
                         </div>
-                        <div className="border border-border rounded-lg overflow-hidden">
-                          <div className="bg-muted/30 px-4 py-2 border-b border-border text-xs font-semibold text-muted-foreground">Processos Recentes</div>
-                          {[1, 2, 3].map(i => (
-                            <div key={i} className="px-4 py-2.5 border-b border-border flex items-center justify-between">
-                              <div className="flex items-center gap-3">
-                                <div className="w-7 h-7 rounded bg-muted flex items-center justify-center text-muted-foreground">
-                                  <FileText className="h-3.5 w-3.5" />
-                                </div>
-                                <div>
-                                  <div className="text-xs font-medium text-primary">Proc. #8921-{i}</div>
-                                  <div className="text-[10px] text-muted-foreground">Vara Cível SP</div>
+
+                        {/* Próximas penhoras */}
+                        <div>
+                          <div className="flex items-center gap-1.5 mb-2">
+                            <div className="p-1 bg-blue-50 rounded">
+                              <Calendar className="h-3 w-3 text-blue-600" />
+                            </div>
+                            <span className="text-[11px] font-semibold text-slate-700">Próximas Penhoras</span>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            {[
+                              { day: 'Hoje', color: 'bg-red-100 text-red-700', proc: '1234567-89.2024', exec: 'Maria Souza', addr: 'Av. Paulista, 1000 — SP' },
+                              { day: '13 mai', color: 'bg-blue-100 text-blue-700', proc: '9876543-21.2024', exec: 'João Ferreira', addr: 'Rua Augusta, 200 — SP' },
+                            ].map((d, i) => (
+                              <div key={i} className="bg-white rounded-lg border border-border p-2.5 shadow-sm">
+                                <div className="flex items-start gap-2">
+                                  <div className={`text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0 ${d.color}`}>{d.day}</div>
+                                  <div className="min-w-0">
+                                    <div className="text-[9px] font-semibold text-slate-800 truncate">{d.proc}</div>
+                                    <div className="flex items-center gap-0.5 mt-0.5">
+                                      <div className="w-2 h-2 rounded-full bg-slate-200 flex items-center justify-center shrink-0">
+                                        <div className="w-1 h-1 rounded-full bg-slate-400" />
+                                      </div>
+                                      <div className="text-[9px] text-slate-500 truncate">{d.exec}</div>
+                                    </div>
+                                    <div className="flex items-center gap-0.5 mt-0.5">
+                                      <MapPin className="h-2 w-2 text-slate-400 shrink-0" />
+                                      <div className="text-[9px] text-slate-400 truncate">{d.addr}</div>
+                                    </div>
+                                    <div className="flex items-center gap-0.5 mt-1.5">
+                                      <MapPin className="h-2 w-2 text-green-500 shrink-0" />
+                                      <span className="text-[9px] text-green-600 font-semibold">Ver rota no mapa</span>
+                                    </div>
+                                  </div>
                                 </div>
                               </div>
-                              <div className="text-[10px] bg-secondary/10 text-secondary px-2 py-0.5 rounded-full">Ativo</div>
-                            </div>
-                          ))}
+                            ))}
+                          </div>
                         </div>
+
+                        {/* Bem sendo cadastrado — mini card com IA */}
+                        <div className="bg-white rounded-lg border border-blue-100 shadow-sm p-2.5 flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded bg-slate-100 flex items-center justify-center shrink-0">
+                            <Camera className="h-4 w-4 text-slate-400" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-[9px] font-semibold text-slate-700">TV Plana OLED 55" · Samsung</div>
+                            <div className="text-[8px] text-slate-400">Código: 7891234567890 · R$ 2.100,00</div>
+                          </div>
+                          <div className="shrink-0 bg-green-50 text-green-600 text-[8px] font-bold px-1.5 py-0.5 rounded border border-green-200 flex items-center gap-0.5">
+                            <CheckCircle2 className="h-2 w-2" /> IA
+                          </div>
+                        </div>
+
                       </div>
                     </div>
                   </div>
@@ -691,20 +742,21 @@ const Home = () => {
                   {/* Floating badge */}
                   <motion.div
                     animate={{ y: [0, -8, 0] }}
-                    transition={{ repeat: Infinity, duration: 5 }}
-                    className="absolute -right-8 top-16 bg-white p-3 rounded-lg shadow-xl border border-border max-w-[160px] hidden md:block"
+                    transition={{ repeat: Infinity, duration: 4.5 }}
+                    className="absolute -right-6 top-14 bg-white p-3 rounded-xl shadow-xl border border-border hidden md:block"
+                    style={{ maxWidth: 160 }}
                   >
-                    <div className="flex items-center gap-2 mb-1.5">
-                      <div className="w-7 h-7 rounded-full bg-secondary/10 flex items-center justify-center text-secondary">
-                        <CheckCircle2 className="h-4 w-4" />
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+                        <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
                       </div>
                       <div>
-                        <div className="text-[10px] text-muted-foreground">Status</div>
-                        <div className="text-xs font-bold text-primary">Auto Gerado</div>
+                        <div className="text-[10px] font-bold text-slate-800">Auto gerado!</div>
+                        <div className="text-[9px] text-slate-400">PDF pronto para assinar</div>
                       </div>
                     </div>
-                    <div className="h-1 w-full bg-muted rounded-full overflow-hidden">
-                      <div className="h-full bg-secondary w-full" />
+                    <div className="h-1 w-full bg-slate-100 rounded-full overflow-hidden">
+                      <div className="h-full bg-green-500 w-full rounded-full" />
                     </div>
                   </motion.div>
                 </motion.div>
@@ -936,12 +988,12 @@ const Home = () => {
                     <Lock className="h-7 w-7 text-white" />
                   </div>
                   <h3 className="text-xl font-bold mb-3">Nuvem segura</h3>
-                  <p className="text-white/75 mb-6 text-sm leading-relaxed">
+                  <p className="text-white/95 mb-6 text-sm leading-relaxed">
                     Todos os processos, fotos e documentos criptografados e armazenados com segurança. Nunca mais perca um auto ou foto de diligência.
                   </p>
                   <div className="space-y-2.5">
                     {['Criptografia de ponta a ponta', 'Backup automático diário', 'Acesso por autenticação segura', 'Dados nunca compartilhados'].map((item, i) => (
-                      <div key={i} className="flex items-center gap-2 text-sm text-white/80">
+                      <div key={i} className="flex items-center gap-2 text-sm text-white">
                         <div className="w-4 h-4 rounded-full bg-secondary/30 flex items-center justify-center shrink-0">
                           <CheckCircle2 className="h-2.5 w-2.5 text-secondary" />
                         </div>
@@ -1030,7 +1082,7 @@ const Home = () => {
                   <h2 className="text-4xl md:text-5xl font-bold mb-6">
                     <span className="text-accent">70%</span> menos tempo<br />em cada penhora
                   </h2>
-                  <p className="text-xl text-gray-300 max-w-2xl mx-auto">
+                  <p className="text-xl text-white/90 max-w-2xl mx-auto">
                     Elimine o preenchimento manual, a digitação de descrições e a formatação de documentos. O que levava horas agora leva minutos.
                   </p>
                 </motion.div>
@@ -1045,7 +1097,7 @@ const Home = () => {
                     </div>
                     <div>
                       <div className="font-bold text-white">Antes do Penhora.app</div>
-                      <div className="text-gray-400 text-xs">Processo manual e demorado</div>
+                      <div className="text-white/70 text-xs">Processo manual e demorado</div>
                     </div>
                   </div>
                   <div className="space-y-3">
@@ -1056,7 +1108,7 @@ const Home = () => {
                       { task: 'Formatar e revisar o auto', time: '25 min' },
                     ].map((t, i) => (
                       <div key={i} className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-gray-300 text-sm">
+                        <div className="flex items-center gap-2 text-white/90 text-sm">
                           <div className="w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" />
                           {t.task}
                         </div>
@@ -1089,7 +1141,7 @@ const Home = () => {
                       { task: 'Gerar o auto em PDF (1 clique)', time: '5 s' },
                     ].map((t, i) => (
                       <div key={i} className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-gray-200 text-sm">
+                        <div className="flex items-center gap-2 text-white/90 text-sm">
                           <CheckCircle2 className="h-3.5 w-3.5 text-secondary shrink-0" />
                           {t.task}
                         </div>
