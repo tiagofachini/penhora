@@ -23,7 +23,6 @@ const Header = () => {
 
   const navItems = [
     { name: 'Home', path: '/' },
-    { name: 'Benefícios', path: '/benefits' },
   ];
 
   const handleLogout = async () => {

@@ -22,7 +22,6 @@ const VersionChecker = () => {
 };
 import { Toaster } from '@/components/ui/toaster';
 import Home from '@/pages/Home';
-import Benefits from '@/pages/Benefits';
 import Login from '@/pages/Login';
 import Signup from '@/pages/Signup';
 import TermsOfUse from '@/pages/TermsOfUse';
@@ -50,7 +49,7 @@ const AppContent = () => {
   const location = useLocation();
 
   // Define public routes where the main Header should appear
-  const publicRoutes = ['/', '/benefits', '/termos-de-uso', '/privacidade'];
+  const publicRoutes = ['/', '/termos-de-uso', '/privacidade'];
   const isPublicRoute = publicRoutes.some(path => {
     // Exact match for '/'
     if (path === '/') return location.pathname === '/';
@@ -70,8 +69,7 @@ const AppContent = () => {
       {shouldShowHeader && <Header />}
       <Routes>
         <Route path="/" element={<Home />} />
-        <Route path="/benefits" element={<Benefits />} />
-        <Route path="/login" element={<Login />} />
+<Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/termos-de-uso" element={<TermsOfUse />} />
         <Route path="/privacidade" element={<PrivacyPolicy />} />

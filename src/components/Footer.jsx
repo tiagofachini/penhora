@@ -31,8 +31,6 @@ const Footer = () => {
             <span className="font-bold text-xl mb-6 block text-slate-900 tracking-wide">Links Rápidos</span>
             <ul className="space-y-3 text-slate-600 text-base">
               <li><Link to="/" className="hover:text-blue-700 hover:translate-x-1 transition-all duration-200 inline-block">Home</Link></li>
-              <li><Link to="/benefits" className="hover:text-blue-700 hover:translate-x-1 transition-all duration-200 inline-block">Benefícios</Link></li>
-              {/* Removed /plans link as per previous task */}
               <li>
                 <a 
                   href={whatsappLink}

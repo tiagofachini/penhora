@@ -602,9 +602,9 @@ const Home = () => {
                       <Link to="/signup">Começar Gratuitamente</Link>
                     </Button>
                     <Button size="lg" variant="outline" asChild className="w-full sm:w-auto h-12 px-8 border-input hover:bg-secondary/5 hover:text-secondary text-primary">
-                      <Link to="/benefits" className="flex items-center">
-                        Ver todos os benefícios <ArrowRight className="ml-2 h-4 w-4" />
-                      </Link>
+                      <a href="#funcionalidades" className="flex items-center">
+                        Ver funcionalidades <ArrowRight className="ml-2 h-4 w-4" />
+                      </a>
                     </Button>
                   </div>
                   <div className="mt-10 flex flex-wrap items-center justify-center lg:justify-start gap-6 text-sm text-muted-foreground font-medium">
@@ -795,7 +795,7 @@ const Home = () => {
         </section>
 
         {/* ── FEATURE 1: IA por foto ────────────────────────────────────────── */}
-        <section className="py-28 bg-white">
+        <section id="funcionalidades" className="py-28 bg-white">
           <div className="container mx-auto px-4">
             <div className="flex flex-col lg:flex-row items-center gap-16">
               <motion.div
@@ -987,7 +987,7 @@ const Home = () => {
                   <div className="w-14 h-14 rounded-2xl bg-white/10 flex items-center justify-center mb-6">
                     <Lock className="h-7 w-7 text-white" />
                   </div>
-                  <h3 className="text-xl font-bold mb-3">Nuvem segura</h3>
+                  <h3 className="text-xl font-bold mb-3 text-white">Nuvem segura</h3>
                   <p className="text-white/95 mb-6 text-sm leading-relaxed">
                     Todos os processos, fotos e documentos criptografados e armazenados com segurança. Nunca mais perca um auto ou foto de diligência.
                   </p>
@@ -1079,7 +1079,7 @@ const Home = () => {
                   <div className="inline-flex items-center px-4 py-1.5 rounded-full bg-accent/20 text-accent text-sm font-semibold mb-6 border border-accent/30">
                     <Zap className="h-4 w-4 mr-2" /> Ganho real de produtividade
                   </div>
-                  <h2 className="text-4xl md:text-5xl font-bold mb-6">
+                  <h2 className="text-4xl md:text-5xl font-bold mb-6 text-white">
                     <span className="text-accent">70%</span> menos tempo<br />em cada penhora
                   </h2>
                   <p className="text-xl text-white/90 max-w-2xl mx-auto">
@@ -1197,10 +1197,10 @@ const Home = () => {
           <div className="absolute inset-0 opacity-15 bg-[radial-gradient(#085454_1px,transparent_1px)] [background-size:16px_16px]" />
           <div className="container mx-auto px-4 relative z-10 text-center">
             <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
-              <h2 className="text-3xl md:text-4xl font-bold mb-6">
+              <h2 className="text-3xl md:text-4xl font-bold mb-6 text-white">
                 Pronto para transformar suas penhoras?
               </h2>
-              <p className="text-xl text-gray-300 mb-10 max-w-2xl mx-auto">
+              <p className="text-xl text-white/90 mb-10 max-w-2xl mx-auto">
                 Cadastre-se agora e comece a usar IA para identificar bens, gerar autos automaticamente e economizar horas em cada diligência.
               </p>
               <Button size="lg" asChild className="bg-accent text-primary hover:bg-accent/90 font-bold px-10 h-14 text-lg shadow-lg">
